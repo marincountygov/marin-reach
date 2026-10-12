@@ -1,33 +1,30 @@
-# Working on marin-app-template
+# Working on marin-reach
 
 ## Architecture
 
-This is the starting scaffold for new MarinOS apps, not a production app. App-owned files retain `APP_NAME`, `APP_DESCRIPTION`, `APP_OWNER`, and `APP_REPO` placeholders. Do not replace them while maintaining the template.
+Marin Reach is a static, list-first community engagement browser. `scripts/build_data.py` converts `data/source/community-engagement-tracker.csv` into `data/engagements.json` (validated against `data/schema/engagement.schema.json`); the committed JSON is what the site reads. `assets/selectors.js` holds every filter, search, calendar-grouping and stats function; `assets/app.js` renders and keeps state in the URL query string. There is no database, server runtime, build step for the site, or map. Charts use the vendored Chart.js bundle, as marin-mentions does.
 
-The template vendors a reviewed Marin App Shell release under `vendor/marinos/`. `platform.shell` in `marin.yml` must match `vendor/marinos/manifest.json`. The shell owns the five web components, shared styling, navigation, standard information-section containers, skip link, and live-status infrastructure. Its distribution already includes the shared Pico/Marin UI baseline.
+Built from `marin-app-template` with the Marin App Shell vendored in `vendor/marinos/`. The shell owns the header, footer, standard sections and `#app-status-message`. Do not edit `vendor/marinos/`; adopt shell releases with the shell installer and keep `platform.shell` in `marin.yml` equal to `vendor/marinos/manifest.json`.
 
-## Boundaries
+## Rules
 
-- Keep shell component hosts in the initial HTML and load the deferred shell before the app script. Use app-owned templates for the icon, About, and Accessibility content.
-- Keep the primary workflow first inside `main#main` as `#start[data-tab-section]`. Do not add duplicate shell section IDs, navigation markup, or a second shell runtime.
-- Do not edit `vendor/marinos/`. Use the shell's installer to adopt an approved release, update `platform.shell`, and re-test. Fix shared defects upstream rather than overriding shell internals in app CSS.
-- Preserve the app's fonts, security configuration, reporting contacts, and `.nojekyll` unless a separately scoped task changes them. Do not claim a security or accessibility review just because the shell renders those sections.
-- Keep the CSP/referrer meta block static and before resource-loading elements. After a reviewed change to `security.json`, run `python3 scripts/sync-security-meta.py --write`; never inject policies at runtime or claim header-only protection via meta tags.
-- Keep the starter minimal. Add workflow-specific markup and behavior only when creating an actual app, not while maintaining this template.
+- All views must derive from `applyFilters()` in `assets/selectors.js`. Never add a second filtering or counting path.
+- Aliases and display names are data (`data/aliases.json`), never UI conditionals. Never silently merge uncertain values; they go to `data/ambiguities.md`.
+- Do not add fields, metadata features, notes, a map, a database, authentication, AI, or new runtime dependencies without explicit approval. Open items live in `docs/decisions.md`.
+- Multi-value fields split on `;` only, because commas appear inside names.
+- Status values are `Planned`, `Canceled`, `Completed`, shown as entered (a past Planned date is not flagged).
+- Keep the CSP static. After a reviewed `security.json` change, run `python3 scripts/sync-security-meta.py --write`. No inline scripts or `style` attributes; set styles through the CSSOM in JS.
+- Status is always text, never color alone. Every chart needs a text summary (`aria-label`) and a screen-reader-only data table.
+- No "view" in UI button/link text.
+- The primary page has no intro paragraph and no visible page heading; explanation belongs in About. No help text under the search box.
+- Follow marin-mentions for the browsing UI: `mm-tab` tablist (List, Calendar, Stats), a "Showing: ... (N engagements — ...)" line instead of filter chips, Reset under search, a Copy / Link / CSV / RSS button row on the list, Copy / All PNG / Link on Stats, a per-chart PNG button, and a checkbox per listing with Select all. Charts are Chart.js canvases in `app-card`s using marin-mentions' blue (`#0777cf`).
+- Sidebar order: search and Reset, Date, Audience, Type of engagement, Project, Agency/Department, Partner, Status, Geographic area, Owner.
 
 ## Before finishing
 
-Bump `TEMPLATE_VERSION` and add a changelog entry for changes that affect newly created apps. This is separate from the shell dependency version. Run `bash scripts/check.sh` and, when available, `bash scripts/check.sh --browser`; report any checks not performed. Review keyboard navigation, reflow, and light/dark appearance.
-
-When scaffolding instructions change, flag the corresponding `marin-skills/marin-app-builder` workflow for review. Do not modify sibling repositories without authorization. Existing apps do not automatically inherit template changes.
-
-## Creating an app
-
-Replace this template-specific document with app-specific architecture, behavior, ownership, and test instructions. Follow `README.md` and `docs/development.md` for placeholder replacement and security setup.
+Run `python3 scripts/build_data.py` after CSV, alias or feed changes, then `bash scripts/check.sh` and, when Playwright is available, `bash scripts/check.sh --browser`. After changing the CSV or aliases run `python3 scripts/build_data.py`. Report any check not run. Review keyboard operation, 200% zoom/reflow and light/dark modes. Do not claim a security or accessibility review.
 
 ## References
 
-- `marin-app-shell`: component implementation, integration contract, release notes, and installer.
-- `marin-ui`: design system consumed through the shell release, not independently synced into this app.
-- `marin-digital-standards`: accessibility, content, brand, security, and product-design requirements.
-- `marin-skills/marin-app-builder`: scaffolding workflow that must reflect this component-based starter.
+- `marin-app-template`, `marin-app-shell`, `marin-ui`, `marin-digital-standards`, `marin-mentions` (filter pattern).
+- [README.md](README.md), [docs/data-dictionary.md](docs/data-dictionary.md), [docs/decisions.md](docs/decisions.md), [docs/development.md](docs/development.md).

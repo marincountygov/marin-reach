@@ -67,14 +67,14 @@
       "control": "Clickjacking protection (frame-ancestors / X-Frame-Options)",
       "reason": "GitHub Pages cannot serve custom HTTP headers, and meta-delivered CSP ignores frame-ancestors.",
       "riskDescription": "Update this once the app's actual risk is known — a low-stakes internal tool and one handling sensitive workflows don't carry the same risk here.",
-      "owner": "APP_OWNER",
+      "owner": "MarinOS platform team",
       "expires": "2027-09-25"
     },
     {
       "control": "MIME-sniffing protection (X-Content-Type-Options) and Permissions-Policy",
       "reason": "Both require a real HTTP response header, which GitHub Pages does not serve.",
       "riskDescription": "Standing gap shared by every MarinOS app on this hosting stack. See marin-digital-standards/security/standard.md.",
-      "owner": "APP_OWNER",
+      "owner": "MarinOS platform team",
       "expires": "2027-09-25"
     }
   ],
@@ -85,6 +85,6 @@
   },
   "review": {
     "lastReviewed": "2026-09-25",
-    "owner": "APP_OWNER"
+    "owner": "MarinOS platform team"
   }
 }
