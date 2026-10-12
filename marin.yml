@@ -1,0 +1,30 @@
+schema: 1
+
+project:
+  name: APP_NAME
+  repo: APP_REPO
+  type: app
+  owner: APP_OWNER
+  audience: staff
+  status: alpha
+
+platform:
+  shell: 1.10.0
+
+deployment:
+  target: github-pages
+  url: https://marincountygov.github.io/APP_REPO/
+
+# Declare whether the deployed app uses AI (not tools used to build it), then
+# uncomment. Until declared, the Tech page says "Not documented".
+# ai:
+#   used: false
+
+# List any outside services the deployed app uses (not the shared App Shell
+# calls), or write "services: none". Until declared, the Tech page says "Not documented".
+# services:
+#   example-api:
+#     name: Example API
+#     purpose: What it is used for
+#     runs: browser        # or build
+#     visitor-data: false  # does it receive anything about the visitor?

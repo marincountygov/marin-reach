@@ -1,0 +1,11 @@
+/*
+  App-specific styles only.
+  Load order: vendor/marinos/marinos.css, then this file.
+
+  The shell bundles the shared Marin UI/Pico baseline and shell components.
+  Use the components and tokens provided by the pinned shell before adding CSS.
+  Scope new rules to the application's workflow or its own class prefix.
+  Do not override shell-owned header, banner, footer, or information-section
+  layout here. Shared fixes belong upstream in marin-app-shell (or marin-ui),
+  followed by a reviewed shell release, not an edit to vendor/marinos/.
+*/
