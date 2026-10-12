@@ -2,30 +2,25 @@
 
 ## Run locally
 
-From the repository root:
+See the [README](../README.md#run-locally). The app fetches `data/engagements.json`, so serve it over HTTP.
+
+## Data and tests
 
 ```bash
-python3 -m http.server 8765 --bind 127.0.0.1
+python3 scripts/build_data.py            # regenerate data/engagements.json
+bash scripts/check.sh                    # security meta, template structure, data, Python and Node tests
+bash scripts/check.sh --browser          # also the Reach workflow and CSP browser tests
 ```
 
-Open `http://127.0.0.1:8765/`. Stop the server with Ctrl+C. There is no app build step, package-manager requirement, or production Node runtime. Do not use `file://` for integration testing: the shell fetches the local `security.json` and optionally the MarinOS catalog and GitHub Updates data.
+`tests/test_build_data.py` covers parsing, normalization, validation and the committed outputs. `tests/selectors.test.js` (Node's built-in runner) covers filtering, URL state, calendar grouping and date behavior, stats, the "Showing:" line, CSV and copy digests. `tests/browser_reach.py` exercises filters, view switching, calendar, dialog, stats, empty/error states, keyboard reachability, small screens and light/dark modes over HTTP under a project-site subpath. Browser tests need Playwright for Python and Chromium. The shell's `lighthouse.json` request from localhost is blocked by the app's CSP and is ignored by the test; it is shell behavior, not an app request.
 
-## Customize the starter
+`tests/browser_smoke.py` is the starter's test. Its `main()` is no longer run: it asserts starter content and had already drifted from shell 1.10.0 (it fails in `marin-app-template` too). `tests/browser_security.py` still imports its server helpers, so keep the file until those move.
 
-Replace identity placeholders in app-owned files, including the security owner fields. Do not rewrite the vendored shell. The template deliberately leaves `repo="APP_REPO"`; replace it before expecting real Updates data. A bare repository slug uses the `marincountygov` organization; the component also accepts `owner/repo`.
+Automated tests are not an accessibility audit. Manually review keyboard use, screen readers, 200% zoom, contrast, and run the County's accessibility tools, including WAVE, over HTTP.
 
-Keep this order in the document head:
+## Page structure
 
-```html
-<link rel="stylesheet" href="vendor/marinos/marinos.css">
-<link rel="stylesheet" href="assets/app.css">
-<script src="vendor/marinos/marinos.js" defer></script>
-<script src="assets/app.js" defer></script>
-```
-
-Place any application libraries before the script that consumes them, preserving deferred execution order. Do not load the old `shared/app-shell.js`, `shared/app-brand.css`, or a separate `vendor/pico.min.css` alongside the shell.
-
-The body contains the banner, header, `main#main`, footer, and Feedback components. Inside `main#main`, keep the app-owned `#start` section first and `<marin-app-info>` after it. Keep all component hosts in the initial HTML: shell version 1 initializes its shared behaviors once, not after later dynamic component insertion.
+Keep the shell component hosts in the initial HTML in the documented order, and the `#start` workflow first in `main#main`. Script order: shell, `assets/selectors.js`, `assets/app.js`, all deferred. Do not duplicate shell IDs.
 
 ### Application-owned content
 
@@ -178,4 +173,4 @@ For agents working on this template, see `AGENTS.md`. Creating an app should als
 
 ## Deployment
 
-`marin.yml` currently names GitHub Pages. Confirm the app's actual Pages source and hosting configuration, then document its deployment procedure here. No workflow files or hosting settings are introduced or changed by this refactor.
+GitHub Pages serves the repository root from `main`. The site needs no build, because `data/engagements.json` is committed. Confirm the Pages source in repository settings before relying on it. See the [README](../README.md#deployment).

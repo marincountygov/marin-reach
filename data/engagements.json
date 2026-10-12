@@ -1,0 +1,454 @@
+{
+  "schemaVersion": 1,
+  "source": "community-engagement-tracker.csv",
+  "records": [
+    {
+      "id": "eng-ee84124a5f",
+      "project": "Tam Junction Placemaking",
+      "owner": "Jen I",
+      "agencies": [
+        "Community Development Agency"
+      ],
+      "partners": [],
+      "geographicAreas": [],
+      "audience": "General Public",
+      "eventName": "Tam Design Review Board",
+      "type": "Meeting",
+      "date": "2026-04-01",
+      "startTime": "19:00",
+      "endTime": null,
+      "location": "Homestead Valley Community Center",
+      "status": "Completed",
+      "raw": {
+        "agencies": [
+          "CDA"
+        ]
+      }
+    },
+    {
+      "id": "eng-32eb5bb251",
+      "project": "Tam Junction Placemaking",
+      "owner": "Jen I",
+      "agencies": [
+        "Community Development Agency"
+      ],
+      "partners": [
+        "Tam Valley Community Services District"
+      ],
+      "geographicAreas": [],
+      "audience": "Stakeholder",
+      "eventName": null,
+      "type": "Meeting",
+      "date": "2026-04-15",
+      "startTime": "19:00",
+      "endTime": null,
+      "location": "Tam Valley Community Center",
+      "status": "Completed",
+      "raw": {
+        "agencies": [
+          "CDA"
+        ]
+      }
+    },
+    {
+      "id": "eng-db77ed66e9",
+      "project": "Tam Junction Placemaking",
+      "owner": "Jen I",
+      "agencies": [
+        "Community Development Agency"
+      ],
+      "partners": [],
+      "geographicAreas": [],
+      "audience": "General Public",
+      "eventName": "Mill Valley Shoreline Adaptation Open House",
+      "type": "Open House",
+      "date": "2026-05-06",
+      "startTime": "17:00",
+      "endTime": null,
+      "location": "Mill Valley Community Center",
+      "status": "Completed",
+      "raw": {
+        "agencies": [
+          "CDA"
+        ]
+      }
+    },
+    {
+      "id": "eng-36ad3694e6",
+      "project": "Tam Junction Placemaking",
+      "owner": "Jen I",
+      "agencies": [
+        "Community Development Agency"
+      ],
+      "partners": [],
+      "geographicAreas": [],
+      "audience": "General Public",
+      "eventName": "Tam Junction Placemaking Meeting",
+      "type": "Meeting",
+      "date": "2026-08-05",
+      "startTime": null,
+      "endTime": null,
+      "location": "Virtual",
+      "status": "Completed",
+      "raw": {
+        "agencies": [
+          "CDA"
+        ]
+      }
+    },
+    {
+      "id": "eng-b895fd3cbd",
+      "project": "Community Outreach Events",
+      "owner": null,
+      "agencies": [
+        "District 4"
+      ],
+      "partners": [],
+      "geographicAreas": [
+        "District 4"
+      ],
+      "audience": "General Public",
+      "eventName": "D4 Community Conversations",
+      "type": "Meeting",
+      "date": "2026-09-22",
+      "startTime": "18:30",
+      "endTime": null,
+      "location": null,
+      "status": "Planned",
+      "raw": {
+        "agencies": [
+          "D4"
+        ],
+        "geographicAreas": [
+          "D4"
+        ]
+      }
+    },
+    {
+      "id": "eng-bf45b76b9c",
+      "project": "Community Outreach Events",
+      "owner": "Jen I",
+      "agencies": [
+        "District 3"
+      ],
+      "partners": [],
+      "geographicAreas": [],
+      "audience": "General Public",
+      "eventName": "Scott Valley Evacuation Drill",
+      "type": "Event",
+      "date": "2026-10-03",
+      "startTime": "09:00",
+      "endTime": null,
+      "location": null,
+      "status": "Completed",
+      "raw": {
+        "agencies": [
+          "D3"
+        ]
+      }
+    },
+    {
+      "id": "eng-34a1115bde",
+      "project": "Community Outreach Events",
+      "owner": "Jen I",
+      "agencies": [
+        "District 3"
+      ],
+      "partners": [
+        "Golden Gate Village"
+      ],
+      "geographicAreas": [],
+      "audience": "General Public",
+      "eventName": "Revitalization Kick Off",
+      "type": "Event",
+      "date": "2026-10-03",
+      "startTime": "13:00",
+      "endTime": null,
+      "location": null,
+      "status": "Completed",
+      "raw": {
+        "agencies": [
+          "D3"
+        ]
+      }
+    },
+    {
+      "id": "eng-1765401bb9",
+      "project": "Community Outreach Events",
+      "owner": "Jen I",
+      "agencies": [
+        "District 3"
+      ],
+      "partners": [],
+      "geographicAreas": [],
+      "audience": "General Public",
+      "eventName": "Marin County Fire Southern Marin Open House",
+      "type": "Open House",
+      "date": "2026-10-04",
+      "startTime": "11:00",
+      "endTime": "13:00",
+      "location": null,
+      "status": "Completed",
+      "raw": {
+        "agencies": [
+          "D3"
+        ]
+      }
+    },
+    {
+      "id": "eng-dc72565cec",
+      "project": "Community Outreach Events",
+      "owner": "Jen I",
+      "agencies": [
+        "District 3"
+      ],
+      "partners": [],
+      "geographicAreas": [],
+      "audience": "General Public",
+      "eventName": "Marin County Fire City Station Open House",
+      "type": "Open House",
+      "date": "2026-10-04",
+      "startTime": "11:00",
+      "endTime": "13:00",
+      "location": null,
+      "status": "Completed",
+      "raw": {
+        "agencies": [
+          "D3"
+        ]
+      }
+    },
+    {
+      "id": "eng-01706f830c",
+      "project": "Community Outreach Events",
+      "owner": null,
+      "agencies": [
+        "District 4"
+      ],
+      "partners": [],
+      "geographicAreas": [
+        "District 4"
+      ],
+      "audience": "General Public",
+      "eventName": "D4 Community Conversations",
+      "type": "Meeting",
+      "date": "2026-10-06",
+      "startTime": "18:30",
+      "endTime": null,
+      "location": null,
+      "status": "Planned",
+      "raw": {
+        "agencies": [
+          "D4"
+        ],
+        "geographicAreas": [
+          "D4"
+        ]
+      }
+    },
+    {
+      "id": "eng-703cbd4bdd",
+      "project": "Envision Marin",
+      "owner": "Linn W",
+      "agencies": [
+        "Office of the County Executive"
+      ],
+      "partners": [],
+      "geographicAreas": [
+        "District 3"
+      ],
+      "audience": "General Public",
+      "eventName": "Marin Ave. Phase II Community Meeting",
+      "type": "Meeting",
+      "date": "2026-10-15",
+      "startTime": "18:00",
+      "endTime": null,
+      "location": null,
+      "status": "Planned",
+      "raw": {
+        "agencies": [
+          "OCE"
+        ],
+        "geographicAreas": [
+          "D3"
+        ]
+      }
+    },
+    {
+      "id": "eng-59ecf74df8",
+      "project": "El Nino",
+      "owner": "Linn W",
+      "agencies": [
+        "Office of the County Executive"
+      ],
+      "partners": [],
+      "geographicAreas": [
+        "District 3"
+      ],
+      "audience": "General Public",
+      "eventName": "Southern Marin Super El Nino Town Hall",
+      "type": "Town Hall",
+      "date": "2026-10-21",
+      "startTime": "17:00",
+      "endTime": null,
+      "location": "Mill Valley Community Center",
+      "status": "Planned",
+      "raw": {
+        "agencies": [
+          "OCE"
+        ],
+        "geographicAreas": [
+          "D3"
+        ]
+      }
+    },
+    {
+      "id": "eng-5c22a2f1fa",
+      "project": "Tam Junction Placemaking",
+      "owner": "Jen I",
+      "agencies": [
+        "Community Development Agency"
+      ],
+      "partners": [],
+      "geographicAreas": [],
+      "audience": "General Public",
+      "eventName": "Tam Design Review Board",
+      "type": "Meeting",
+      "date": "2026-11-04",
+      "startTime": null,
+      "endTime": null,
+      "location": null,
+      "status": "Planned",
+      "raw": {
+        "agencies": [
+          "CDA"
+        ]
+      }
+    },
+    {
+      "id": "eng-02795dc8e3",
+      "project": "Envision Marin",
+      "owner": "Linn W",
+      "agencies": [
+        "Office of the County Executive"
+      ],
+      "partners": [],
+      "geographicAreas": [
+        "Ross"
+      ],
+      "audience": "General Public",
+      "eventName": null,
+      "type": "Workshop",
+      "date": "2026-11-12",
+      "startTime": "18:00",
+      "endTime": "19:30",
+      "location": "Marin Art & Garden Center",
+      "status": "Planned",
+      "raw": {
+        "agencies": [
+          "OCE"
+        ]
+      }
+    },
+    {
+      "id": "eng-f9a1753a74",
+      "project": "Envision Marin",
+      "owner": "Linn W",
+      "agencies": [
+        "Office of the County Executive"
+      ],
+      "partners": [],
+      "geographicAreas": [
+        "San Rafael"
+      ],
+      "audience": "General Public",
+      "eventName": null,
+      "type": "Workshop",
+      "date": "2026-11-14",
+      "startTime": "10:00",
+      "endTime": "11:30",
+      "location": "Marin County Civic Center",
+      "status": "Planned",
+      "raw": {
+        "agencies": [
+          "OCE"
+        ]
+      }
+    },
+    {
+      "id": "eng-22f30aa535",
+      "project": "Envision Marin",
+      "owner": "Linn W",
+      "agencies": [
+        "Office of the County Executive"
+      ],
+      "partners": [],
+      "geographicAreas": [
+        "San Rafael"
+      ],
+      "audience": "General Public",
+      "eventName": null,
+      "type": "Workshop",
+      "date": "2026-11-14",
+      "startTime": "13:30",
+      "endTime": "15:00",
+      "location": "Marin Health & Wellness Campus Connection Center",
+      "status": "Planned",
+      "raw": {
+        "agencies": [
+          "OCE"
+        ]
+      }
+    },
+    {
+      "id": "eng-d18431eb87",
+      "project": "Envision Marin",
+      "owner": "Linn W",
+      "agencies": [
+        "Office of the County Executive"
+      ],
+      "partners": [],
+      "geographicAreas": [
+        "Novato"
+      ],
+      "audience": "General Public",
+      "eventName": null,
+      "type": "Workshop",
+      "date": "2026-11-16",
+      "startTime": "18:00",
+      "endTime": "19:30",
+      "location": "Marin Humane",
+      "status": "Planned",
+      "raw": {
+        "agencies": [
+          "OCE"
+        ]
+      }
+    },
+    {
+      "id": "eng-a5e523b070",
+      "project": "Envision Marin",
+      "owner": "Linn W",
+      "agencies": [
+        "Office of the County Executive"
+      ],
+      "partners": [],
+      "geographicAreas": [
+        "Mill Valley"
+      ],
+      "audience": "General Public",
+      "eventName": null,
+      "type": "Workshop",
+      "date": "2026-11-19",
+      "startTime": "18:00",
+      "endTime": "19:30",
+      "location": "Mill Valley Community Center",
+      "status": "Planned",
+      "raw": {
+        "agencies": [
+          "OCE"
+        ]
+      }
+    }
+  ]
+}

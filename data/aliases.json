@@ -1,0 +1,20 @@
+{
+  "$comment": "Display-name aliases applied during CSV import. Keys are matched after trimming whitespace, case-insensitively. Unlisted values pass through unchanged. Add entries here, not in application code.",
+  "agencies": {
+    "CDA": "Community Development Agency",
+    "OCE": "Office of the County Executive",
+    "D1": "District 1",
+    "D2": "District 2",
+    "D3": "District 3",
+    "D4": "District 4",
+    "D5": "District 5"
+  },
+  "geographicAreas": {
+    "D1": "District 1",
+    "D2": "District 2",
+    "D3": "District 3",
+    "D4": "District 4",
+    "D5": "District 5"
+  },
+  "partners": {}
+}
