@@ -183,6 +183,7 @@
 }
 
 .mm-results-buttons {
+  align-items: flex-start;
   display: flex;
   gap: 0.5rem;
   flex-wrap: wrap;
@@ -308,7 +309,15 @@
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
-  margin-bottom: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.mm-results-buttons[hidden] {
+  display: none;
+}
+
+.reach-cal-controls {
+  align-items: center;
 }
 
 .reach-cal-controls button {
@@ -316,8 +325,44 @@
   margin: 0;
 }
 
+.reach-cal-nav {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.reach-cal-nav button {
+  min-width: 2.75rem;
+  font-weight: 700;
+}
+
+.reach-cal-controls select.reach-cal-range {
+  width: auto;
+  margin: 0;
+}
+
+/* Day range is a list on every screen size. */
+#panel-calendar[data-range="day"] .reach-cal {
+  display: none;
+}
+
+#panel-calendar[data-range="day"] .reach-agenda {
+  display: block;
+}
+
+#panel-calendar[data-range="week"] .reach-cal td {
+  height: 9rem;
+}
+
 .reach-cal-title {
-  margin: 0.5rem 0;
+  margin: 0.75rem 0 0.5rem;
+}
+
+#cal-status {
+  margin: -0.5rem 0 0.5rem;
+}
+
+#cal-status:empty {
+  display: none;
 }
 
 .reach-cal {
@@ -560,5 +605,40 @@
 
   .reach-record__meta {
     grid-template-columns: 1fr;
+  }
+}
+
+/* Sort by date: two icon buttons, the pressed one filled like the tabs. */
+/* Pico gives [role="group"] full width and joined buttons; these two stay separate and compact. */
+.mm-sort-group[role="group"] {
+  display: flex;
+  width: auto;
+  gap: 0.25rem;
+}
+
+.mm-sort-group[role="group"] > .mm-sort-button {
+  flex: 0 0 auto;
+  width: auto;
+  min-height: 3.125rem;
+  border-radius: var(--pico-border-radius);
+}
+
+.mm-sort-group[hidden] {
+  display: none;
+}
+
+.mm-sort-button {
+  padding-inline: 0.7rem;
+}
+
+.mm-sort-button[aria-pressed="true"] {
+  background: var(--app-accent);
+  border-color: var(--app-accent);
+  color: #ffffff;
+}
+
+@media (prefers-color-scheme: dark) {
+  .mm-sort-button[aria-pressed="true"] {
+    color: #101418;
   }
 }

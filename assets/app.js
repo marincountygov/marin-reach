@@ -14,7 +14,7 @@
     records: [],
     state: S.emptyState(),
     filtered: [],
-    month: '',
+    anchor: '',
     shown: PAGE_SIZE,
     facetInputs: new Map(),
     selected: new Set(),
@@ -50,6 +50,7 @@
 
   function clearActionStatus() {
     $('action-status').textContent = '';
+    $('cal-status').textContent = '';
   }
 
   // --- URL state ---
@@ -182,7 +183,7 @@
   function renderList() {
     const list = $('record-list');
     list.textContent = '';
-    const sorted = S.sortNewestFirst(app.filtered);
+    const sorted = S.sortByDate(app.filtered, app.state.sort);
     sorted.slice(0, app.shown).forEach((r) => list.append(renderRecord(r, 3, true)));
     const more = $('show-more');
     more.hidden = sorted.length <= app.shown;
@@ -210,20 +211,34 @@
   }
 
   function renderCalendar() {
+    const range = app.state.range;
     const byDate = S.groupByDate(app.filtered);
     const today = todayISO();
-    const title = S.monthTitle(app.month);
+    const title = S.calendarTitle(range, app.anchor);
+    const bounds = S.rangeBounds(range, app.anchor);
+    const unit = { day: 'day', week: 'week', month: 'month' }[range];
+    $('panel-calendar').dataset.range = range;
     $('cal-title').textContent = title;
     $('cal-caption').textContent = 'Engagements for ' + title;
+    $('cal-range').value = range;
+    $('cal-prev').setAttribute('aria-label', 'Previous ' + unit);
+    $('cal-next').setAttribute('aria-label', 'Next ' + unit);
 
+    // Day view is a list only; week and month use the grid (narrow screens use the list too).
+    $('cal-grid').hidden = range === 'day';
     const body = $('cal-body');
     body.textContent = '';
-    S.monthGrid(app.month).forEach((week) => {
+    const weeks = range === 'week'
+      ? [S.weekDays(app.anchor).map((date) => ({ date: date, inMonth: true }))]
+      : S.monthGrid(S.monthKey(app.anchor));
+    weeks.forEach((week) => {
       const row = h('tr');
       week.forEach((cell) => {
         const items = byDate.get(cell.date) || [];
         const td = h('td', { class: cell.inMonth ? '' : 'is-outside' });
-        td.append(h('span', { class: 'reach-cal-day', 'aria-current': cell.date === today ? 'date' : false, text: String(S.parseISO(cell.date).d) }));
+        const p = S.parseISO(cell.date);
+        const label = range === 'week' ? S.formatDate(cell.date).slice(0, -6) : String(p.d); // "Oct 14" or "14"
+        td.append(h('span', { class: 'reach-cal-day', 'aria-current': cell.date === today ? 'date' : false, text: label }));
         if (cell.inMonth && items.length) {
           const ul = h('ul', { class: 'reach-cal-events', 'aria-label': S.formatDate(cell.date, true) });
           items.forEach((r) => ul.append(h('li', {}, eventButton(r, false))));
@@ -236,8 +251,12 @@
 
     const agenda = $('cal-agenda');
     agenda.textContent = '';
-    const days = Array.from(byDate.keys()).filter((d) => S.monthKey(d) === app.month);
-    if (!days.length) agenda.append(h('p', { text: 'No engagements in ' + title + '.' }));
+    const days = Array.from(byDate.keys()).filter((d) => d >= bounds.start && d <= bounds.end);
+    if (!days.length) {
+      agenda.append(h('p', { text: range === 'day' ? 'No engagements on ' + title + '.' : range === 'week' ? 'No engagements ' + title + '.' : 'No engagements in ' + title + '.' }));
+    }
+    // The outline legend only means something when there is an event to explain.
+    $('cal-legend').hidden = days.length === 0;
     days.forEach((d) => {
       const ul = h('ul', { class: 'reach-agenda__events' });
       byDate.get(d).forEach((r) => ul.append(h('li', {}, eventButton(r, true))));
@@ -422,7 +441,7 @@
       say('No engagements to copy \u2014 adjust the filters first.');
       return;
     }
-    const digest = S.buildDigest(items, S.describeFilters(app.state, app.filtered));
+    const digest = S.buildDigest(items, S.describeFilters(app.state, app.filtered), app.state.sort);
     say(copyRichOrFallback(digest.html, digest.text)
       ? 'Copied ' + S.plural(items.length, 'engagement') + ' to clipboard.' : FALLBACK_MESSAGE);
   }
@@ -439,15 +458,16 @@
     }
   }
 
-  function copyLink() {
+  // `target` is the status line next to the button that was used.
+  function copyLink(target) {
     $('copy-fallback').hidden = true;
     const text = window.location.href;
     if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(text).then(() => say('Copied link to clipboard.'))
-        .catch(() => { showCopyFallback(text); say(FALLBACK_MESSAGE); });
+      navigator.clipboard.writeText(text).then(() => say('Copied link to clipboard.', target))
+        .catch(() => { showCopyFallback(text); say(FALLBACK_MESSAGE, target); });
       return;
     }
-    say(copyRichOrFallback(text, text) ? 'Copied link to clipboard.' : FALLBACK_MESSAGE);
+    say(copyRichOrFallback(text, text) ? 'Copied link to clipboard.' : FALLBACK_MESSAGE, target);
   }
 
   function triggerDownload(blob, filename) {
@@ -467,7 +487,7 @@
       say('No engagements to download \u2014 adjust the filters first.');
       return;
     }
-    triggerDownload(new Blob([S.toCsv(items)], { type: 'text/csv;charset=utf-8' }), 'Marin Reach - ' + filenameDate() + '.csv');
+    triggerDownload(new Blob([S.toCsv(items, app.state.sort)], { type: 'text/csv;charset=utf-8' }), 'Marin Reach - ' + filenameDate() + '.csv');
     say('Downloaded ' + S.plural(items.length, 'engagement') + ' as CSV.');
   }
 
@@ -549,6 +569,12 @@
       tab.setAttribute('aria-selected', String(on));
       tab.tabIndex = on ? 0 : -1;
     });
+    // On the calendar the Link button sits beside the < and > buttons, so the toolbar row steps aside.
+    $('copy-link-button').hidden = view === 'calendar';
+    document.querySelector('.mm-results-buttons').hidden = view === 'calendar';
+    $('sort-group').hidden = !list;
+    $('sort-newest').setAttribute('aria-pressed', String(app.state.sort === 'newest'));
+    $('sort-oldest').setAttribute('aria-pressed', String(app.state.sort === 'oldest'));
     $('copy-list-button').hidden = !list;
     $('download-data-button').hidden = !list;
     $('rss-feed-link').hidden = !list;
@@ -565,8 +591,11 @@
     clearActionStatus();
     app.filtered = S.applyFilters(app.records, app.state);
     app.shown = PAGE_SIZE;
-    if (app.filtered.length && !app.filtered.some((r) => S.monthKey(r.date) === app.month)) {
-      app.month = S.initialMonth(app.filtered, todayISO());
+    // In month range, jump to a month that has results if the current one is empty. Day and week
+    // ranges stay where the person put them.
+    if (app.state.range === 'month' && app.filtered.length &&
+        !app.filtered.some((r) => S.monthKey(r.date) === S.monthKey(app.anchor))) {
+      app.anchor = S.initialMonth(app.filtered, todayISO()) + '-01';
     }
     writeUrl();
     syncControls();
@@ -587,8 +616,12 @@
 
   function resetFilters() {
     const view = app.state.view;
+    const range = app.state.range;
+    const sort = app.state.sort;
     app.state = S.emptyState();
     app.state.view = view;
+    app.state.range = range;
+    app.state.sort = sort;
     update(true);
     say('Filters reset.');
   }
@@ -646,8 +679,19 @@
     });
     $('show-more').addEventListener('click', () => { app.shown += PAGE_SIZE; renderList(); });
 
+    ['newest', 'oldest'].forEach((order) => {
+      $('sort-' + order).addEventListener('click', () => {
+        if (app.state.sort === order) return;
+        clearActionStatus(); // an earlier copy message no longer describes what is shown
+        app.state.sort = order;
+        app.shown = PAGE_SIZE;
+        writeUrl();
+        renderView();
+      });
+    });
     $('copy-list-button').addEventListener('click', copyList);
-    $('copy-link-button').addEventListener('click', copyLink);
+    $('copy-link-button').addEventListener('click', () => copyLink());
+    $('cal-link').addEventListener('click', () => copyLink($('cal-status')));
     $('download-data-button').addEventListener('click', downloadCsv);
     $('copy-stats-button').addEventListener('click', copyStats);
     $('download-all-png-button').addEventListener('click', downloadAllPngs);
@@ -655,9 +699,25 @@
       b.addEventListener('click', () => downloadChartPng(b.dataset.chartDownload));
     });
 
-    $('cal-prev').addEventListener('click', () => { app.month = S.shiftMonth(app.month, -1); renderCalendar(); });
-    $('cal-next').addEventListener('click', () => { app.month = S.shiftMonth(app.month, 1); renderCalendar(); });
-    $('cal-today').addEventListener('click', () => { app.month = S.monthKey(todayISO()); renderCalendar(); });
+    $('cal-prev').addEventListener('click', () => { app.anchor = S.shiftAnchor(app.state.range, app.anchor, -1); renderCalendar(); });
+    $('cal-next').addEventListener('click', () => { app.anchor = S.shiftAnchor(app.state.range, app.anchor, 1); renderCalendar(); });
+    // The range sets how far < and > move. Going from Month to Week or Day starts on today when
+    // today is in the month being shown, otherwise on the month's first event, so the first
+    // view is one with something to see.
+    $('cal-range').addEventListener('change', (e) => {
+      const next = e.target.value;
+      if (app.state.range === 'month' && next !== 'month') {
+        const key = S.monthKey(app.anchor);
+        if (key === S.monthKey(todayISO())) app.anchor = todayISO();
+        else {
+          const first = app.filtered.map((r) => r.date).filter((d) => S.monthKey(d) === key).sort()[0];
+          app.anchor = first || key + '-01';
+        }
+      }
+      app.state.range = next;
+      writeUrl();
+      renderCalendar();
+    });
 
     $('filter-toggle').addEventListener('click', () => {
       const panel = $('filter-panel');
@@ -713,7 +773,8 @@
     sanitizeState();
     buildFacets();
     app.filtered = S.applyFilters(app.records, app.state);
-    app.month = S.initialMonth(app.filtered, todayISO());
+    app.anchor = S.initialMonth(app.filtered, todayISO()) + '-01';
+    if (app.state.range !== 'month' && S.monthKey(app.anchor) === S.monthKey(todayISO())) app.anchor = todayISO();
     $('reach-loading').hidden = true;
     $('reach-app').hidden = false;
     update(false);
