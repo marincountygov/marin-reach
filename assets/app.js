@@ -90,7 +90,14 @@
         app.facetInputs.set(facet.key + '\u0000' + opt.value, { input: input, count: count });
         list.append(h('li', {}, h('label', { for: id }, [input, h('span', { text: opt.value }), count])));
       });
-      host.append(h('fieldset', { class: 'search-facet-group' }, [h('legend', { text: facet.label }), list]));
+      // One collapsed dropdown per filter, like the monitor groups in marin-mentions.
+      const count = h('span', { class: 'app-help-text', 'data-facet-count': facet.key });
+      const details = h('details', { class: 'mm-facet-group', 'data-facet': facet.key }, [
+        h('summary', {}, [facet.label + ' ', count]),
+        h('fieldset', { class: 'search-facet-group' }, [h('legend', { class: 'visually-hidden', text: facet.label }), list]),
+      ]);
+      if (app.state.facets[facet.key].length) details.open = true;
+      host.append(details);
     });
   }
 
@@ -108,6 +115,10 @@
         entry.input.checked = st.facets[facet.key].indexOf(opt.value) >= 0;
         entry.count.textContent = '(' + opt.count + ')';
       });
+    });
+    S.FACETS.forEach((facet) => {
+      const badge = document.querySelector('[data-facet-count="' + facet.key + '"]');
+      if (badge) badge.textContent = st.facets[facet.key].length ? '(' + st.facets[facet.key].length + ' selected)' : '';
     });
     const n = S.activeFilterCount(st);
     $('filter-toggle').textContent = n ? 'Filters (' + n + ' active)' : 'Filters';
@@ -169,7 +180,7 @@
   function renderList() {
     const list = $('record-list');
     list.textContent = '';
-    const sorted = S.sortRecords(app.filtered);
+    const sorted = S.sortNewestFirst(app.filtered);
     sorted.slice(0, app.shown).forEach((r) => list.append(renderRecord(r, 3, true)));
     const more = $('show-more');
     more.hidden = sorted.length <= app.shown;

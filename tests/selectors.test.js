@@ -174,3 +174,19 @@ test('slugify matches the feed file names', () => {
   assert.equal(S.slugify('Envision Marin'), 'envision-marin');
   assert.equal(S.slugify('B & C'), 'b-c');
 });
+
+test('newest first: later dates on top, earliest start time first within a day, input untouched', () => {
+  const input = [
+    rec({ id: 'a', date: '2026-10-03', startTime: '13:00' }),
+    rec({ id: 'b', date: '2026-11-14', startTime: '13:30' }),
+    rec({ id: 'c', date: '2026-11-14', startTime: '10:00' }),
+    rec({ id: 'd', date: '2026-04-01' }),
+  ];
+  assert.deepEqual(S.sortNewestFirst(input).map((r) => r.id), ['c', 'b', 'a', 'd']);
+  assert.deepEqual(input.map((r) => r.id), ['a', 'b', 'c', 'd']);
+  const csvDates = S.toCsv(input).split('\r\n').slice(1).map((line) => line.split(',')[2]);
+  assert.deepEqual(csvDates, ['2026-11-14', '2026-11-14', '2026-10-03', '2026-04-01']);
+  const digest = S.buildDigest(input, 'x').text;
+  assert.ok(digest.indexOf('Nov 14, 2026') < digest.indexOf('Oct 3, 2026'));
+  assert.ok(digest.indexOf('Oct 3, 2026') < digest.indexOf('Apr 1, 2026'));
+});

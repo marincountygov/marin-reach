@@ -99,6 +99,22 @@
   font-size: 0.8rem;
 }
 
+/* Collapsed dropdown per filter, as the monitor groups in marin-mentions. */
+.mm-facet-group {
+  margin-bottom: 0.5rem;
+}
+
+.mm-facet-group summary {
+  cursor: pointer;
+  padding: 0.25rem 0;
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+
+.mm-facet-group .search-facet-group {
+  margin: 0.25rem 0 0.75rem;
+}
+
 /* Tabs (List / Calendar / Stats), same look as marin-mentions' content tabs. */
 .mm-tab-row {
   display: flex;
