@@ -177,6 +177,10 @@ def run(base, page, problems):
     require(page.locator("#record-list .mm-card__copy-status").first.inner_text() == "Copied engagement to clipboard.",
             "Per-listing copy message missing")
     require(page.locator("#record-list .copy-button").count() == total, "A Copy button per listing")
+    names = page.locator("#record-list .copy-button").evaluate_all("els => els.map(e => e.getAttribute('aria-label'))")
+    labels = page.locator("#record-list .mm-card__select label").all_text_contents()
+    require(len(set(names)) == total and len(set(labels)) == total, "Per-listing control names must be unique")
+    require(page.get_attribute("#rss-feed-link", "aria-label").startswith("RSS"), "RSS name must start with its visible text")
     page.click("#copy-list-button")
     require(page.inner_text("#action-status") == f"Copied {total} engagements to clipboard.", page.inner_text("#action-status"))
     page.click("#copy-link-button")
@@ -208,6 +212,9 @@ def run(base, page, problems):
                 f"{view} buttons: {visible(None)}")
     page.click("#view-tabs [data-view=stats]")
     require(page.locator("#panel-stats canvas").count() == 3, "Stats should draw three charts")
+    # Chart text follows the page color (the default dark grey vanishes in dark mode).
+    require(page.evaluate("Chart.defaults.color") == page.evaluate("getComputedStyle(document.getElementById('start')).color"),
+            "Chart text color does not follow the page")
     require(page.locator("[data-chart-download]").count() == 3, "A PNG button per chart")
     with page.expect_download() as info:
         page.click("[data-chart-download=timeline]")
@@ -231,6 +238,10 @@ def run(base, page, problems):
     # Responsive: sidebar becomes a toggle; calendar becomes an agenda.
     for width in (390, 320):
         page.set_viewport_size({"width": width, "height": 900})
+        for other in ("?view=stats", "?view=list"):
+            page.goto(base + other)
+            page.wait_for_selector("#reach-app:not([hidden])")
+            no_overflow(page, f"{width}px {other}")
         page.goto(base + "?view=calendar")
         page.wait_for_selector("#reach-app:not([hidden])")
         require(not page.is_visible("#cal-grid") and page.is_visible("#cal-agenda"), "Agenda fallback missing")
