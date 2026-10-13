@@ -68,6 +68,16 @@ def run(base, page, problems):
             f"Summary line format: {summary(page)!r}")
     require(count(page) == total, "Default state is not the full dataset")
     require(page.locator("h1").count() == 1, "Expected one h1")
+    # WAVE-style checks: no ARIA reference to a missing id, no empty (layout-looking) tables,
+    # and no underlined text that is not a link.
+    broken = page.evaluate("""() => { const out = []; document.querySelectorAll('[aria-controls],[aria-labelledby],[aria-describedby]').forEach((e) => {
+        ['aria-controls', 'aria-labelledby', 'aria-describedby'].forEach((a) => (e.getAttribute(a) || '').split(/\\s+/).filter(Boolean)
+          .forEach((id) => { if (!document.getElementById(id)) out.push(a + '=' + id); })); }); return out; }""")
+    require(not broken, f"Broken ARIA references: {broken}")
+    require(page.locator("#start table:not(:has(th))").count() == 0, "A table has no header cells")
+    underlined = page.evaluate("""() => [...document.querySelectorAll('#start *')].filter((e) => !e.closest('a') &&
+        getComputedStyle(e).textDecorationLine.includes('underline') && [...e.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim())).length""")
+    require(underlined == 0, "Underlined text that is not a link")
     require(page.locator("#start > p").count() == 0, "No intro text belongs on the main page")
     require(page.locator(".search-input-field .app-help-text").count() == 0, "No help text under search")
     require(page.locator("#reset-filters-button").is_visible(), "Reset button missing")

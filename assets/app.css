@@ -338,9 +338,12 @@
 }
 
 .reach-cal-day[aria-current="date"] {
+  display: inline-block;
+  padding: 0 0.4rem;
+  border: 2px solid var(--app-text);
+  border-radius: 999px;
   font-weight: 700;
   color: var(--app-text);
-  text-decoration: underline;
 }
 
 .reach-cal-events,

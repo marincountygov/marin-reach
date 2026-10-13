@@ -260,6 +260,8 @@
     else dialog.setAttribute('open', '');
     const title = $('record-dialog-title');
     title.tabIndex = -1;
+    // Name the dialog only once its title exists, so the page never holds a reference to a missing id.
+    dialog.setAttribute('aria-labelledby', 'record-dialog-title');
     title.focus();
   }
 
@@ -286,7 +288,7 @@
     Object.keys(app.charts).forEach((key) => app.charts[key].destroy());
     app.charts = {};
     applyChartTheme();
-    if (app.state.view === 'stats') renderStats();
+    if (app.state.view === 'stats') renderStats(true);
   }
 
   // PNG exports get the card's background so light text in dark mode stays readable anywhere.
@@ -339,7 +341,9 @@
     });
   }
 
-  function renderStats() {
+  // The numbers, summaries, and screen-reader tables are always kept current (so the tables are never
+  // empty); charts are drawn only while the Stats tab is showing, because a chart sizes itself when created.
+  function renderStats(draw) {
     const stats = S.computeStats(app.filtered);
     const kpis = $('stats-kpis');
     kpis.textContent = '';
@@ -355,13 +359,13 @@
     const peak = months.slice().sort((a, b) => b.count - a.count)[0];
     describeChart($('stats-timeline-chart'), months.length
       ? stats.total + ' total, peaking at ' + peak.count + ' in ' + peak.label + '.' : 'No engagements for the current filters.');
-    drawChart('timeline', 'line', months.map((m) => m.label), months.map((m) => m.count));
+    if (draw) drawChart('timeline', 'line', months.map((m) => m.label), months.map((m) => m.count));
     fillTable('stats-timeline-table', 'Month', months);
 
     [['agencies', stats.byAgency, 'Agency or department'], ['projects', stats.byProject, 'Project']].forEach((c) => {
       describeChart($('stats-' + c[0] + '-chart'), c[1].length
         ? 'Top: ' + c[1][0].label + ' with ' + c[1][0].count + ', of ' + c[1].length + ' shown.' : 'No data for the current filters.');
-      drawChart(c[0], 'bar', c[1].map((e) => e.label), c[1].map((e) => e.count));
+      if (draw) drawChart(c[0], 'bar', c[1].map((e) => e.label), c[1].map((e) => e.count));
       fillTable('stats-' + c[0] + '-table', c[2], c[1]);
     });
   }
@@ -554,7 +558,7 @@
     renderList();
     renderCalendar();
     // Chart.js sizes a canvas when it is created, so draw only once the panel is visible.
-    if (view === 'stats') renderStats();
+    renderStats(view === 'stats');
   }
 
   function update(focusSummary) {
