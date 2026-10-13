@@ -28,9 +28,9 @@ This is not a full WCAG conformance audit and not a screen reader test. Findings
 
 - **Medium to high, 1.4.11:** text inputs, date inputs and checkbox borders were about 1.4:1 against the page in light mode and 1.2:1 in dark mode, below the 3:1 needed for the edge of a control. Marin UI 1.23.0 adds a control border token, and Marin App Shell 1.10.1 carries the same fix. With shell 1.10.1 installed here the borders measure 4.05:1 (light) and 4.44:1 (dark).
 
-## Not fixed
+## Also fixed
 
-- **Low, 2.5.8:** the filter checkboxes are 18 px and their label rows are 21 px tall. They meet the spacing exception (rows about 28 px apart), but only just.
+- **Low, 2.5.8:** the checkboxes were 18 px square and met the target-size rule only through spacing. They are now 24 px.
 
 ## Passed
 
