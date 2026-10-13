@@ -12,12 +12,12 @@
   // and Location are deliberately not facets.
   const FACETS = [
     { key: 'audience', param: 'audience', label: 'Audience', all: 'All audiences', values: (r) => (r.audience ? [r.audience] : []) },
-    { key: 'type', param: 'type', label: 'Type of engagement', all: 'All types', values: (r) => (r.type ? [r.type] : []) },
+    { key: 'type', param: 'type', label: 'Type', all: 'All types', values: (r) => (r.type ? [r.type] : []) },
     { key: 'project', param: 'project', label: 'Project', all: 'All projects', values: (r) => [r.project] },
     { key: 'agency', param: 'agency', label: 'Agency/Department', all: 'All agencies', values: (r) => r.agencies },
     { key: 'partner', param: 'partner', label: 'Partner', all: 'All partners', values: (r) => r.partners },
     { key: 'status', param: 'status', label: 'Status', all: 'All statuses', values: (r) => [r.status] },
-    { key: 'area', param: 'area', label: 'Geographic area', all: 'All areas', values: (r) => r.geographicAreas },
+    { key: 'area', param: 'area', label: 'Location', all: 'All locations', values: (r) => r.geographicAreas },
     { key: 'owner', param: 'owner', label: 'Owner', all: 'All owners', values: (r) => (r.owner ? [r.owner] : []) },
   ];
   const VIEWS = ['list', 'calendar', 'stats'];
@@ -113,6 +113,12 @@
   }
 
   function sortRecords(records) { return records.slice().sort(compareRecords); }
+
+  // The list, CSV, and copied text: newest date first, earliest start time first within a day.
+  function sortNewestFirst(records) {
+    return records.slice().sort((a, b) => b.date.localeCompare(a.date) ||
+      (a.startTime || '').localeCompare(b.startTime || '') || a.project.localeCompare(b.project) || a.id.localeCompare(b.id));
+  }
 
   function label(r) { return r.eventName || r.project; }
 
@@ -272,7 +278,7 @@
   function toCsv(records) {
     const header = ['Project', 'Event Name', 'Date', 'Start Time', 'End Time', 'Location',
       'Agency/Department', 'Partner', 'Audience', 'Type of Engagement', 'Geographic Area', 'Owner', 'Status'];
-    const rows = sortRecords(records).map((r) => [r.project, r.eventName, r.date, r.startTime, r.endTime,
+    const rows = sortNewestFirst(records).map((r) => [r.project, r.eventName, r.date, r.startTime, r.endTime,
       r.location, r.agencies.join('; '), r.partners.join('; '), r.audience, r.type,
       r.geographicAreas.join('; '), r.owner, r.status]);
     return [header].concat(rows).map((row) => row.map(csvField).join(',')).join('\r\n');
@@ -313,7 +319,7 @@
 
   // Rich (HTML) and plain-text flavors of a digest, in list order.
   function buildDigest(records, filtersText) {
-    const blocks = sortRecords(records).map(buildItemBlock);
+    const blocks = sortNewestFirst(records).map(buildItemBlock);
     return {
       text: ['Marin Reach', filtersText, ''].concat(blocks.map((b) => b.text + '\n')).join('\n').trim(),
       html: '<div><b>Marin Reach</b><br>' + escapeHtml(filtersText) + '<br><br>' +
@@ -323,7 +329,7 @@
 
   return {
     FACETS, VIEWS, emptyState, parseQuery, serializeState, activeFilterCount, applyFilters,
-    facetOptions, sortRecords, label, groupByDate, monthGrid, monthKey, shiftMonth, initialMonth,
+    facetOptions, sortRecords, sortNewestFirst, label, groupByDate, monthGrid, monthKey, shiftMonth, initialMonth,
     computeStats, formatTime, formatTimeRange, toISO, parseISO, formatDate, monthTitle, plural,
     statusCounts, describeFilters, slugify, toCsv, detailPairs, buildItemBlock, buildDigest, csvField,
   };

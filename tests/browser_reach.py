@@ -12,6 +12,7 @@ from pathlib import Path
 import json
 import re
 import sys
+from datetime import datetime
 from threading import Thread
 
 from playwright.sync_api import sync_playwright
@@ -41,6 +42,12 @@ def summary(page):
     return page.inner_text("#active-filters")
 
 
+def open_facet(page, key):
+    details = page.locator(f"#facet-groups details[data-facet={key}]")
+    if details.get_attribute("open") is None:
+        details.locator("summary").click()
+
+
 def count(page):
     match = re.search(r"\((\d+) engagements?", summary(page))
     require(match is not None, f"Summary line lacks a count: {summary(page)!r}")
@@ -65,10 +72,18 @@ def run(base, page, problems):
     require(page.locator(".search-input-field .app-help-text").count() == 0, "No help text under search")
     require(page.locator("#reset-filters-button").is_visible(), "Reset button missing")
     require(page.locator("#record-list > li").count() == total, "List does not show every record")
+    dates = page.locator("#record-list > li time, #record-list > li dd:nth-of-type(1)").all_inner_texts()
+    shown = [d for d in dates if re.match(r"^[A-Z][a-z]{2}, [A-Z][a-z]{2} \d+, \d{4}$", d)]
+    ordered = [datetime.strptime(d, "%a, %b %d, %Y") for d in shown]
+    require(len(ordered) == total and ordered == sorted(ordered, reverse=True), f"List is not newest first: {shown}")
     require(page.locator("h1").count() == 1, "Expected one h1")
-    require(page.locator("#facet-groups fieldset legend").all_text_contents()
-            == ["Audience", "Type of engagement", "Project", "Agency/Department", "Partner", "Status",
-                "Geographic area", "Owner"], "Facet groups differ from the requested order")
+    require(page.locator("#facet-groups details > summary").evaluate_all("els => els.map(e => e.firstChild.textContent.trim())")
+            == ["Audience", "Type", "Project", "Agency/Department", "Partner", "Status", "Location", "Owner"],
+            "Facet groups differ from the requested names or order")
+    require(page.locator("#facet-groups details[open]").count() == 0, "Filter dropdowns should start collapsed")
+    require(not page.locator("input[name=project][value='El Nino']").is_visible(), "Options should be hidden until opened")
+    page.click("#facet-groups details[data-facet=project] > summary")
+    require(page.locator("input[name=project][value='El Nino']").is_visible(), "Dropdown did not open")
     require(page.locator("#date-range legend").inner_text() == "Date", "Date range missing")
     require(page.locator("#filters fieldset legend").first.inner_text() == "Date", "Date should be the first filter")
 
@@ -76,8 +91,11 @@ def run(base, page, problems):
     page.check("input[name=project][value='Envision Marin']")
     page.check("input[name=project][value='El Nino']")
     require(count(page) == 7, "OR within a facet failed")
+    open_facet(page, "status")
     page.check("input[name=status][value=Planned]")
     require(page.url.endswith("?project=Envision+Marin&project=El+Nino&status=Planned"), f"URL state: {page.url}")
+    require(page.locator("[data-facet-count=project]").inner_text() == "(2 selected)", "Selected count missing")
+    require(page.locator("#facet-groups details[data-facet=project]").get_attribute("open") is not None, "Dropdown closed itself")
     require("Envision Marin, El Nino" in summary(page) and "Status: Planned" in summary(page), summary(page))
 
     # Date range, then switch views without losing state.
@@ -177,6 +195,7 @@ def run(base, page, problems):
     with page.expect_download() as info:
         page.click("#download-data-button")
     require(len(Path(info.value.path()).read_text(encoding="utf-8").strip().splitlines()) == total + 1, "CSV row count")
+    open_facet(page, "project")
     page.check("input[name=project][value='El Nino']")
     require(page.get_attribute("#rss-feed-link", "href") == "feeds/project-el-nino.xml", "Single-project RSS link")
     page.check("input[name=project][value='Envision Marin']")

@@ -11,7 +11,8 @@
 ## What it does
 
 - **List** (default), **Calendar** (month grid, with an agenda on small screens) and **Stats** tabs, laid out like marin-mentions. All three read the same filtered records.
-- A persistent filter sidebar (a toggle on small screens): search with Reset, a Date range, then multi-select facets for Audience, Type of engagement, Project, Agency/Department, Partner, Status, Geographic area and Owner. Choices within a facet combine with OR; facets combine with AND.
+- A persistent filter sidebar (a toggle on small screens): search with Reset, a Date range, then collapsed dropdowns, like the monitors in marin-mentions, with multi-select checkboxes for Audience, Type, Project, Agency/Department, Partner, Status, Location and Owner. Choices within a facet combine with OR; facets combine with AND.
+- The list, CSV and copied text are newest date first.
 - A "Showing:" line that describes the active filters and counts.
 - List: a checkbox per listing and Select all, plus Copy, Link, CSV and RSS buttons. Copy and CSV use the checked listings, or everything shown when none are checked. RSS is available for all engagements or one project.
 - Stats: Planned, Completed, Canceled and Partners, and charts for events over time, by agency/department and by project, each with a PNG button, plus Copy and All PNG.
