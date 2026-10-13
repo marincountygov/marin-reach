@@ -68,6 +68,7 @@ def run(base, page, problems):
             f"Summary line format: {summary(page)!r}")
     require(count(page) == total, "Default state is not the full dataset")
     require(page.locator("h1").count() == 1, "Expected one h1")
+    require("Loading Marin Reach" in (ROOT / "index.html").read_text(encoding="utf-8"), "The loading message names the app")
     # WAVE-style checks: no ARIA reference to a missing id, no empty (layout-looking) tables,
     # and no underlined text that is not a link.
     broken = page.evaluate("""() => { const out = []; document.querySelectorAll('[aria-controls],[aria-labelledby],[aria-describedby]').forEach((e) => {
