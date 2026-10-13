@@ -128,6 +128,8 @@
 
   function renderRecord(r, headingLevel, withCheckbox) {
     const heading = S.label(r);
+    // Per-listing controls are named with the date and time so repeated titles stay distinct.
+    const named = heading + ', ' + S.formatDate(r.date) + (S.formatTimeRange(r) ? ', ' + S.formatTimeRange(r) : '');
     const rows = [];
     S.detailPairs(r).forEach((pair) => {
       rows.push(h('dt', { text: pair[0] }));
@@ -138,7 +140,7 @@
       h('dl', { class: 'reach-record__meta' }, rows),
     ];
     if (withCheckbox) {
-      const copy = h('button', { type: 'button', class: 'copy-button', 'aria-label': 'Copy engagement: ' + heading }, [
+      const copy = h('button', { type: 'button', class: 'copy-button', 'aria-label': 'Copy engagement: ' + named }, [
         copyIcon(), checkIcon(),
       ]);
       const status = h('p', { class: 'app-help-text mm-card__copy-status', role: 'status' });
@@ -151,7 +153,7 @@
       const id = 'select-' + r.id;
       const box = h('input', { type: 'checkbox', id: id, 'data-select-id': r.id });
       box.checked = app.selected.has(r.id);
-      kids.push(h('span', { class: 'mm-card__select' }, [h('label', { class: 'visually-hidden', for: id, text: 'Select: ' + heading }), box]));
+      kids.push(h('span', { class: 'mm-card__select' }, [h('label', { class: 'visually-hidden', for: id, text: 'Select: ' + named }), box]));
     }
     kids.push(body);
     return h(withCheckbox ? 'li' : 'article', { class: 'app-card mm-card', 'data-status': r.status.toLowerCase() }, kids);
@@ -256,7 +258,9 @@
     const dialog = $('record-dialog');
     if (typeof dialog.showModal === 'function') dialog.showModal();
     else dialog.setAttribute('open', '');
-    $('record-dialog-close').focus();
+    const title = $('record-dialog-title');
+    title.tabIndex = -1;
+    title.focus();
   }
 
   function closeRecord() {
@@ -267,6 +271,35 @@
   }
 
   // --- stats ---
+
+  // Chart.js draws its own text and grid, so give it the page's colors (it would otherwise
+  // use dark grey text that disappears in dark mode). Charts are rebuilt when the scheme changes.
+  function applyChartTheme() {
+    if (typeof Chart === 'undefined') return;
+    const text = getComputedStyle($('start')).color;
+    const card = document.querySelector('#panel-stats .app-card');
+    Chart.defaults.color = text;
+    if (card) Chart.defaults.borderColor = getComputedStyle(card).borderTopColor;
+  }
+
+  function rebuildCharts() {
+    Object.keys(app.charts).forEach((key) => app.charts[key].destroy());
+    app.charts = {};
+    applyChartTheme();
+    if (app.state.view === 'stats') renderStats();
+  }
+
+  // PNG exports get the card's background so light text in dark mode stays readable anywhere.
+  function chartImage(canvas) {
+    const out = document.createElement('canvas');
+    out.width = canvas.width;
+    out.height = canvas.height;
+    const context = out.getContext('2d');
+    context.fillStyle = getComputedStyle(canvas.closest('.app-card')).backgroundColor;
+    context.fillRect(0, 0, out.width, out.height);
+    context.drawImage(canvas, 0, 0);
+    return out;
+  }
 
   function describeChart(canvas, summary) {
     const title = canvas.dataset.chartTitle || 'Chart';
@@ -284,6 +317,7 @@
   function drawChart(key, type, labels, counts) {
     const canvas = $('stats-' + key + '-chart');
     if (!canvas || typeof Chart === 'undefined') return;
+    if (!app.themeApplied) { applyChartTheme(); app.themeApplied = true; }
     const isLine = type === 'line';
     const data = {
       labels: labels,
@@ -437,7 +471,7 @@
     const chart = app.charts[key];
     if (!chart) return;
     const title = chart.canvas.dataset.chartTitle || 'Chart';
-    chart.canvas.toBlob((blob) => {
+    chartImage(chart.canvas).toBlob((blob) => {
       if (blob) triggerDownload(blob, 'Marin Reach - ' + title + ' - ' + filenameDate() + '.png');
     });
   }
@@ -469,7 +503,7 @@
       text.push('');
       // width/height attributes, not inline style: paste targets strip style.
       return '<b>' + title + '</b>' + (summary ? '<br>' + summary : '') + '<br><img src="' +
-        canvas.toDataURL('image/png') + '" alt="' + title + '" width="' + canvas.clientWidth + '" height="' + canvas.clientHeight + '">';
+        chartImage(canvas).toDataURL('image/png') + '" alt="' + title + '" width="' + canvas.clientWidth + '" height="' + canvas.clientHeight + '">';
     });
     html += blocks.join('<br><br>') + '</div>';
     say(copyRichOrFallback(html, text.join('\n').trim()) ? 'Copied charts to clipboard.' : FALLBACK_MESSAGE);
@@ -626,6 +660,18 @@
       const open = panel.dataset.open !== 'true';
       panel.dataset.open = String(open);
       $('filter-toggle').setAttribute('aria-expanded', String(open));
+    });
+    const scheme = window.matchMedia('(prefers-color-scheme: dark)');
+    (scheme.addEventListener ? scheme.addEventListener.bind(scheme, 'change') : scheme.addListener.bind(scheme))(() => {
+      app.themeApplied = false;
+      rebuildCharts();
+    });
+    // A link styled as a button should also answer the Space key, as a button does.
+    $('rss-feed-link').addEventListener('keydown', (e) => {
+      if (e.key === ' ' && $('rss-feed-link').hasAttribute('href')) {
+        e.preventDefault();
+        $('rss-feed-link').click();
+      }
     });
     $('record-dialog-close').addEventListener('click', closeRecord);
     $('record-dialog-copy').addEventListener('click', () => {

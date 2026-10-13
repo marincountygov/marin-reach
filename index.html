@@ -53,7 +53,7 @@
           <button type="button" id="filter-toggle" class="secondary reach-filter-toggle" aria-expanded="false" aria-controls="filter-panel">Filters</button>
 
           <form id="filters" class="search-layout" aria-label="Filter engagements">
-            <aside id="filter-panel" class="search-sidebar" aria-label="Filter engagements" data-open="false">
+            <aside id="filter-panel" class="search-sidebar" aria-label="Filters" data-open="false">
               <div class="search-input-field">
                 <label for="filter-search">Search</label>
                 <input type="search" id="filter-search" name="search" placeholder="Search engagements&hellip;" autocomplete="off">
@@ -94,7 +94,7 @@
                 <button type="button" class="secondary mm-copy-button" id="copy-list-button"><svg viewBox="0 0 24 24" aria-hidden="true"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>Copy</button>
                 <button type="button" class="secondary mm-copy-button" id="copy-link-button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>Link</button>
                 <button type="button" class="secondary mm-copy-button" id="download-data-button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15V3"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/></svg>CSV</button>
-                <a role="button" class="secondary mm-copy-button" id="rss-feed-link" target="_blank" rel="noreferrer"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11a9 9 0 0 1 9 9"/><path d="M4 4a16 16 0 0 1 16 16"/><circle cx="5" cy="19" r="1"/></svg>RSS</a>
+                <a role="button" class="secondary mm-copy-button" id="rss-feed-link" target="_blank" rel="noreferrer" aria-label="RSS feed (opens in a new tab)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11a9 9 0 0 1 9 9"/><path d="M4 4a16 16 0 0 1 16 16"/><circle cx="5" cy="19" r="1"/></svg>RSS</a>
               </div>
               <p class="app-help-text" id="action-status" role="status"></p>
               <p class="app-help-text" id="rss-feed-status" role="status"></p>
@@ -151,19 +151,19 @@
                   <div class="app-card">
                     <h3>Events over time</h3>
                     <canvas id="stats-timeline-chart" role="img" data-chart-title="Events over time" aria-label="Events over time"></canvas>
-                    <table class="visually-hidden" id="stats-timeline-table"></table>
+                    <div class="visually-hidden"><table id="stats-timeline-table"></table></div>
                     <button type="button" class="secondary mm-copy-button mm-chart-download" data-chart-download="timeline"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15V3"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/></svg>PNG</button>
                   </div>
                   <div class="app-card">
                     <h3>By agency or department</h3>
                     <canvas id="stats-agencies-chart" role="img" data-chart-title="By agency or department" aria-label="By agency or department"></canvas>
-                    <table class="visually-hidden" id="stats-agencies-table"></table>
+                    <div class="visually-hidden"><table id="stats-agencies-table"></table></div>
                     <button type="button" class="secondary mm-copy-button mm-chart-download" data-chart-download="agencies"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15V3"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/></svg>PNG</button>
                   </div>
                   <div class="app-card">
                     <h3>By project</h3>
                     <canvas id="stats-projects-chart" role="img" data-chart-title="By project" aria-label="By project"></canvas>
-                    <table class="visually-hidden" id="stats-projects-table"></table>
+                    <div class="visually-hidden"><table id="stats-projects-table"></table></div>
                     <button type="button" class="secondary mm-copy-button mm-chart-download" data-chart-download="projects"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15V3"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/></svg>PNG</button>
                   </div>
                 </div>
