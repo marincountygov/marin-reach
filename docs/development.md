@@ -12,9 +12,9 @@ bash scripts/check.sh                    # security meta, template structure, da
 bash scripts/check.sh --browser          # also the Reach workflow and CSP browser tests
 ```
 
-`tests/test_build_data.py` covers parsing, normalization, validation and the committed outputs. `tests/selectors.test.js` (Node's built-in runner) covers filtering, URL state, calendar grouping and date behavior, stats, the "Showing:" line, CSV and copy digests. `tests/browser_reach.py` exercises filters, view switching, calendar, dialog, stats, empty/error states, keyboard reachability, small screens and light/dark modes over HTTP under a project-site subpath. Browser tests need Playwright for Python and Chromium. The shell's `lighthouse.json` request from localhost is blocked by the app's CSP and is ignored by the test; it is shell behavior, not an app request.
+`tests/test_build_data.py` covers parsing, normalization, validation and the committed outputs. `tests/selectors.test.js` (Node's built-in runner) covers filtering, URL state, calendar grouping and date behavior, stats, the "Showing:" line, CSV and copy digests. `tests/browser_reach.py` exercises filters, view switching, calendar, dialog, stats, empty/error states, keyboard reachability, small screens and light/dark modes over HTTP under a project-site subpath. Browser tests need Playwright for Python and Chromium. When served from localhost, the shell requests its Accessibility score and Tech data from a local MarinOS server (`http://localhost:8935`), which the app's CSP blocks on purpose. The test ignores that console message. Check those two sections on the deployed app.
 
-`tests/browser_smoke.py` is the starter's test. Its `main()` is no longer run: it asserts starter content and had already drifted from shell 1.10.0 (it fails in `marin-app-template` too). `tests/browser_security.py` still imports its server helpers, so keep the file until those move.
+`tests/browser_smoke.py` is the starter's test. Its `main()` is not run here because it asserts starter content. `tests/browser_security.py` imports its server helpers, so keep the file.
 
 Automated tests are not an accessibility audit. Manually review keyboard use, screen readers, 200% zoom, contrast, and run the County's accessibility tools, including WAVE, over HTTP.
 
