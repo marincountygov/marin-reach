@@ -14,6 +14,16 @@ This is not a full WCAG conformance audit and not a screen reader test. Findings
 | Medium | The RSS link is a link styled as a button. Space did not activate it and a new tab opened without notice. | 4.1.2, 3.2.5 | Space now activates it and its name says it opens in a new tab. |
 | Low | Two landmarks shared the name "Filter engagements". The detail dialog put focus on its last button. | 1.3.1, 2.4.3 | The sidebar is named "Filters". Focus goes to the dialog title. |
 
+## WAVE findings (2026-10-13)
+
+| WAVE item | Cause | Result |
+|---|---|---|
+| Broken ARIA reference (error) | The detail dialog pointed at its title before the title existed. | Fixed: the dialog is named only once it opens. |
+| Layout table (3 alerts) | The three screen-reader data tables behind the charts were empty until the Stats tab was opened. | Fixed: the tables are always filled; only chart drawing waits for the tab. |
+| Underlined text | Today's date in the calendar was underlined. | Fixed: today is shown with a bold outlined circle. |
+| Redundant link | The shell's Security and Accessibility sections link the same address twice in nearby text (security.txt, WCAG 2.2). | Not an app issue; reported for a separate shell change. |
+| Noscript element | The required message for people with JavaScript turned off. | Expected; informational only. |
+
 ## Fixed in the shared design system
 
 - **Medium to high, 1.4.11:** text inputs, date inputs and checkbox borders were about 1.4:1 against the page in light mode and 1.2:1 in dark mode, below the 3:1 needed for the edge of a control. Marin UI 1.23.0 adds a control border token, and Marin App Shell 1.10.1 carries the same fix. With shell 1.10.1 installed here the borders measure 4.05:1 (light) and 4.44:1 (dark).
