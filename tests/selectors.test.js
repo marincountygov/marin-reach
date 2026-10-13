@@ -61,6 +61,8 @@ test('facet options omit blanks and count against other filters only', () => {
 test('URL state round-trips and ignores invalid dates and views', () => {
   const st = S.emptyState();
   st.view = 'calendar';
+  st.range = 'week';
+  st.sort = 'oldest';
   st.q = 'tam junction';
   st.from = '2026-10-01';
   st.facets.agency = ['OCE', 'District 3'];
@@ -69,6 +71,12 @@ test('URL state round-trips and ignores invalid dates and views', () => {
   const bad = S.parseQuery('?from=tomorrow&view=map');
   assert.equal(bad.from, '');
   assert.equal(bad.view, 'list');
+  assert.equal(S.parseQuery('?range=decade').range, 'month');
+  assert.equal(S.parseQuery('?range=day').range, 'day');
+  assert.equal(S.parseQuery('?sort=oldest').sort, 'oldest');
+  assert.equal(S.parseQuery('?sort=sideways').sort, 'newest');
+  assert.ok(!S.serializeState(S.emptyState()).includes('sort'));
+  assert.ok(!S.serializeState(S.emptyState()).includes('range'));
   assert.equal(S.serializeState(S.emptyState()), '');
 });
 
@@ -189,4 +197,38 @@ test('newest first: later dates on top, earliest start time first within a day, 
   const digest = S.buildDigest(input, 'x').text;
   assert.ok(digest.indexOf('Nov 14, 2026') < digest.indexOf('Oct 3, 2026'));
   assert.ok(digest.indexOf('Oct 3, 2026') < digest.indexOf('Apr 1, 2026'));
+});
+
+test('calendar ranges: bounds, titles, and how far < and > move', () => {
+  assert.deepEqual(S.rangeBounds('day', '2026-10-14'), { start: '2026-10-14', end: '2026-10-14' });
+  assert.deepEqual(S.rangeBounds('week', '2026-10-14'), { start: '2026-10-11', end: '2026-10-17' });
+  assert.deepEqual(S.rangeBounds('month', '2026-10-14'), { start: '2026-10-01', end: '2026-10-31' });
+  assert.deepEqual(S.weekDays('2026-10-14'), ['2026-10-11', '2026-10-12', '2026-10-13', '2026-10-14', '2026-10-15', '2026-10-16', '2026-10-17']);
+  assert.equal(S.shiftAnchor('day', '2026-10-01', -1), '2026-09-30');
+  assert.equal(S.shiftAnchor('week', '2026-10-14', 1), '2026-10-21');
+  assert.equal(S.shiftAnchor('week', '2026-10-14', -1), '2026-10-07');
+  assert.equal(S.shiftAnchor('month', '2026-12-15', 1), '2027-01-01');
+  assert.equal(S.shiftAnchor('month', '2026-01-20', -1), '2025-12-01');
+  assert.equal(S.calendarTitle('month', '2026-10-14'), 'October 2026');
+  assert.equal(S.calendarTitle('week', '2026-10-14'), 'Oct 11 \u2013 Oct 17, 2026');
+  assert.equal(S.calendarTitle('week', '2026-09-30'), 'Sep 27 \u2013 Oct 3, 2026');
+  assert.equal(S.calendarTitle('week', '2026-12-30'), 'Dec 27, 2026 \u2013 Jan 2, 2027');
+  assert.equal(S.calendarTitle('day', '2026-10-14'), 'Wednesday, October 14, 2026');
+});
+
+test('sorting by date: newest or oldest first, earliest start within a day, exports follow the order', () => {
+  const input = [
+    rec({ id: 'a', date: '2026-10-03', startTime: '13:00' }),
+    rec({ id: 'b', date: '2026-11-14', startTime: '13:30' }),
+    rec({ id: 'c', date: '2026-11-14', startTime: '10:00' }),
+    rec({ id: 'd', date: '2026-04-01' }),
+  ];
+  assert.deepEqual(S.sortByDate(input, 'newest').map((r) => r.id), ['c', 'b', 'a', 'd']);
+  assert.deepEqual(S.sortByDate(input, 'oldest').map((r) => r.id), ['d', 'a', 'c', 'b']);
+  assert.deepEqual(S.sortByDate(input).map((r) => r.id), ['c', 'b', 'a', 'd'], 'newest is the default');
+  const dates = (csv) => csv.split('\r\n').slice(1).map((line) => line.split(',')[2]);
+  assert.deepEqual(dates(S.toCsv(input, 'oldest')), ['2026-04-01', '2026-10-03', '2026-11-14', '2026-11-14']);
+  assert.deepEqual(dates(S.toCsv(input)), ['2026-11-14', '2026-11-14', '2026-10-03', '2026-04-01']);
+  const text = S.buildDigest(input, 'x', 'oldest').text;
+  assert.ok(text.indexOf('Apr 1, 2026') < text.indexOf('Nov 14, 2026'));
 });

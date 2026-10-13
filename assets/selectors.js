@@ -21,6 +21,8 @@
     { key: 'owner', param: 'owner', label: 'Owner', all: 'All owners', values: (r) => (r.owner ? [r.owner] : []) },
   ];
   const VIEWS = ['list', 'calendar', 'stats'];
+  const RANGES = ['day', 'week', 'month'];
+  const SORTS = ['newest', 'oldest'];
   const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August',
     'September', 'October', 'November', 'December'];
   const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -29,7 +31,7 @@
   function emptyState() {
     const facets = {};
     FACETS.forEach((f) => { facets[f.key] = []; });
-    return { q: '', from: '', to: '', facets: facets, view: 'list' };
+    return { q: '', from: '', to: '', facets: facets, view: 'list', range: 'month', sort: 'newest' };
   }
 
   const ISO = /^\d{4}-\d{2}-\d{2}$/;
@@ -45,12 +47,17 @@
     FACETS.forEach((f) => { state.facets[f.key] = params.getAll(f.param).filter(Boolean); });
     const view = params.get('view');
     state.view = VIEWS.indexOf(view) >= 0 ? view : 'list';
+    const range = params.get('range');
+    state.range = RANGES.indexOf(range) >= 0 ? range : 'month';
+    state.sort = params.get('sort') === 'oldest' ? 'oldest' : 'newest';
     return state;
   }
 
   function serializeState(state) {
     const params = new URLSearchParams();
     if (state.view && state.view !== 'list') params.set('view', state.view);
+    if (state.range && state.range !== 'month') params.set('range', state.range);
+    if (state.sort && state.sort !== 'newest') params.set('sort', state.sort);
     if (state.q) params.set('q', state.q);
     if (state.from) params.set('from', state.from);
     if (state.to) params.set('to', state.to);
@@ -120,6 +127,13 @@
       (a.startTime || '').localeCompare(b.startTime || '') || a.project.localeCompare(b.project) || a.id.localeCompare(b.id));
   }
 
+  // The same order for the list, the CSV, and copied text. Within a day, earliest start time first.
+  function sortByDate(records, order) {
+    const dir = order === 'oldest' ? 1 : -1;
+    return records.slice().sort((a, b) => dir * a.date.localeCompare(b.date) ||
+      (a.startTime || '').localeCompare(b.startTime || '') || a.project.localeCompare(b.project) || a.id.localeCompare(b.id));
+  }
+
   function label(r) { return r.eventName || r.project; }
 
   // --- dates (string based, timezone independent) ---
@@ -166,6 +180,52 @@
       weeks.push(week);
     }
     return weeks;
+  }
+
+  // --- calendar ranges: the dropdown (day, week, month) sets how far < and > move ---
+
+  function addDays(iso, n) {
+    const p = parseISO(iso);
+    return toISO(p.y, p.m, p.d + n);
+  }
+
+  function weekStart(iso) {
+    const p = parseISO(iso);
+    return addDays(iso, -new Date(Date.UTC(p.y, p.m - 1, p.d)).getUTCDay());
+  }
+
+  function weekDays(iso) {
+    const start = weekStart(iso);
+    return [0, 1, 2, 3, 4, 5, 6].map((n) => addDays(start, n));
+  }
+
+  // First and last day shown for a range around an anchor date.
+  function rangeBounds(range, anchor) {
+    if (range === 'day') return { start: anchor, end: anchor };
+    if (range === 'week') return { start: weekStart(anchor), end: addDays(weekStart(anchor), 6) };
+    const key = monthKey(anchor);
+    return { start: key + '-01', end: addDays(shiftMonth(key, 1) + '-01', -1) };
+  }
+
+  // The anchor after pressing < (delta -1) or > (delta 1).
+  function shiftAnchor(range, anchor, delta) {
+    if (range === 'day') return addDays(anchor, delta);
+    if (range === 'week') return addDays(anchor, 7 * delta);
+    return shiftMonth(monthKey(anchor), delta) + '-01';
+  }
+
+  function calendarTitle(range, anchor) {
+    if (range === 'month') return monthTitle(monthKey(anchor));
+    if (range === 'day') {
+      const p = parseISO(anchor);
+      const day = WEEKDAYS[new Date(Date.UTC(p.y, p.m - 1, p.d)).getUTCDay()];
+      return day + ', ' + MONTHS[p.m - 1] + ' ' + p.d + ', ' + p.y;
+    }
+    const b = rangeBounds('week', anchor);
+    const s = parseISO(b.start);
+    const e = parseISO(b.end);
+    const short = (p, withYear) => MONTHS[p.m - 1].slice(0, 3) + ' ' + p.d + (withYear ? ', ' + p.y : '');
+    return short(s, s.y !== e.y) + ' \u2013 ' + short(e, true);
   }
 
   // Month to show first: the one holding today if it has records, else the
@@ -275,10 +335,10 @@
     return /[",\n]/.test(text) ? '"' + text.replace(/"/g, '""') + '"' : text;
   }
 
-  function toCsv(records) {
+  function toCsv(records, order) {
     const header = ['Project', 'Event Name', 'Date', 'Start Time', 'End Time', 'Location',
       'Agency/Department', 'Partner', 'Audience', 'Type of Engagement', 'Geographic Area', 'Owner', 'Status'];
-    const rows = sortNewestFirst(records).map((r) => [r.project, r.eventName, r.date, r.startTime, r.endTime,
+    const rows = sortByDate(records, order).map((r) => [r.project, r.eventName, r.date, r.startTime, r.endTime,
       r.location, r.agencies.join('; '), r.partners.join('; '), r.audience, r.type,
       r.geographicAreas.join('; '), r.owner, r.status]);
     return [header].concat(rows).map((row) => row.map(csvField).join(',')).join('\r\n');
@@ -318,8 +378,8 @@
   }
 
   // Rich (HTML) and plain-text flavors of a digest, in list order.
-  function buildDigest(records, filtersText) {
-    const blocks = sortNewestFirst(records).map(buildItemBlock);
+  function buildDigest(records, filtersText, order) {
+    const blocks = sortByDate(records, order).map(buildItemBlock);
     return {
       text: ['Marin Reach', filtersText, ''].concat(blocks.map((b) => b.text + '\n')).join('\n').trim(),
       html: '<div><b>Marin Reach</b><br>' + escapeHtml(filtersText) + '<br><br>' +
@@ -328,8 +388,8 @@
   }
 
   return {
-    FACETS, VIEWS, emptyState, parseQuery, serializeState, activeFilterCount, applyFilters,
-    facetOptions, sortRecords, sortNewestFirst, label, groupByDate, monthGrid, monthKey, shiftMonth, initialMonth,
+    FACETS, VIEWS, RANGES, addDays, weekStart, weekDays, rangeBounds, shiftAnchor, calendarTitle, emptyState, parseQuery, serializeState, activeFilterCount, applyFilters,
+    facetOptions, sortRecords, sortNewestFirst, sortByDate, SORTS, label, groupByDate, monthGrid, monthKey, shiftMonth, initialMonth,
     computeStats, formatTime, formatTimeRange, toISO, parseISO, formatDate, monthTitle, plural,
     statusCounts, describeFilters, slugify, toCsv, detailPairs, buildItemBlock, buildDigest, csvField,
   };
