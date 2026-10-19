@@ -673,7 +673,8 @@
   margin: -4px 0 0 -4px;
 }
 
-.leaflet-marker-icon.reach-pin:focus-visible {
+.leaflet-marker-icon.reach-pin:focus-visible,
+.leaflet-marker-icon.reach-cluster:focus-visible {
   /* The tiles are always light, so the ring is black with a white edge in both color schemes. */
   outline: 3px solid #000000;
   outline-offset: 2px;
@@ -809,4 +810,49 @@ body[data-view="map"] .app-feedback:not(:focus) {
 
 .reach-map-places {
   margin-top: 1.25rem;
+}
+
+/* A cluster of nearby markers: one look, the count as text, white on Marin blue (4.6:1). */
+.reach-map .leaflet-marker-icon.reach-cluster[role="button"] {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  padding: 0;
+  border: 3px solid #ffffff;
+  border-radius: 50%;
+  background: var(--marin-blue);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.55);
+  color: #ffffff;
+}
+
+.reach-cluster__count {
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.reach-fw-enter[hidden],
+.reach-fw-exit[hidden] {
+  display: none;
+}
+
+/* The full window view: Pico already makes <dialog> a viewport-sized overlay; the panel fills it and scrolls. */
+.reach-map-dialog__panel {
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+  padding: 1rem;
+  background: var(--app-bg);
+  color: var(--app-text);
+}
+
+.reach-map-dialog__panel h2 {
+  margin: 0 0 0.75rem;
+  font-size: 1.25rem;
+}
+
+.reach-map-dialog .reach-map {
+  height: max(18rem, calc(100dvh - 11rem));
 }

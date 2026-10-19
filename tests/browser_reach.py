@@ -312,10 +312,18 @@ def run(base, page, problems):
     mapped = [r for r in expected if r.get("place", {}).get("geo")]
     sites = {(r["place"]["geo"]["latitude"], r["place"]["geo"]["longitude"]) for r in mapped}
     require(page.locator("#view-tabs [role=tab]").all_inner_texts() == ["List", "Calendar", "Map", "Stats"], "Tab order")
+    # The clock is fixed in this test, which would freeze Leaflet's pan, zoom and cluster animations halfway, so the
+    # map tests run with reduced motion, as for a person who asks for it.
+    page.emulate_media(reduced_motion="reduce")
     page.goto(base + "?view=map")
     page.wait_for_selector("#panel-map:not([hidden]) .leaflet-marker-icon")
     require(page.get_attribute("#tab-map", "aria-selected") == "true", "?view=map did not open the Map tab")
-    require(page.locator(".leaflet-marker-icon").count() == len(sites), "One marker per distinct coordinate pair")
+    # Nearby locations group into clusters, so count every location a pin or a cluster stands for.
+    def locations_on_map():
+        pins = page.locator(".reach-pin").count()
+        grouped = page.locator(".reach-cluster").evaluate_all("els => els.map(e => e.querySelector('.visually-hidden').textContent.match(/(\\d+) locations?, /)[1])")
+        return pins + sum(int(n) for n in grouped)
+    require(locations_on_map() == len(sites), f"Every distinct coordinate pair is a pin or inside a cluster: {locations_on_map()} vs {len(sites)}")
     require(page.is_hidden("#map-selection"), "Nothing is selected until a marker is chosen")
     require(page.is_hidden("#map-clear"), "Clear shows only when a location is selected")
     require(page.evaluate("document.getElementById('active-filters').nextElementSibling.id") == "map-status",
@@ -325,14 +333,14 @@ def run(base, page, problems):
     toolbar = [i for i in ("copy-list-button", "copy-link-button", "download-data-button", "rss-feed-link",
                            "copy-stats-button", "download-all-png-button") if page.is_visible("#" + i)]
     require(toolbar == ["copy-link-button"], f"Map toolbar: {toolbar}")
-    names = page.locator(".leaflet-marker-icon").evaluate_all("els => els.map(e => e.getAttribute('aria-label'))")
+    names = page.locator(".reach-pin").evaluate_all("els => els.map(e => e.getAttribute('aria-label'))")
     require(all(n and n not in ("Marker", "Map pin") for n in names), f"Marker names: {names}")
     require(page.locator(".leaflet-marker-icon").evaluate_all("els => els.every(e => e.getAttribute('role') === 'button' && e.tabIndex === 0)"),
             "Markers must be focusable buttons")
     require(page.locator(".leaflet-control-attribution").is_visible(), "Map attribution must stay visible")
     big = page.locator(".leaflet-marker-icon").evaluate_all("els => els.map(e => e.getBoundingClientRect().width)")
     require(min(big) >= 24, "Marker target is smaller than 24 CSS pixels")
-    marker = page.locator(".leaflet-marker-icon", has_text="")
+    marker = page.locator(".reach-pin")
     marker.first.focus()
     page.keyboard.press("Enter")
     require(page.evaluate("document.activeElement.id") == "map-selection-title", "Enter did not move focus to the details")
@@ -412,6 +420,56 @@ def run(base, page, problems):
     require(page.locator(".leaflet-marker-icon").count() == 0, "Markers should clear with no results")
     page.click("#map-go-list")
     require(page.get_attribute("#tab-list", "aria-selected") == "true" and "q=zzzz" in page.url, "Go to List keeps filters")
+    # Full window: a modal dialog that fills the window, keeps the details, closes with Escape, and returns focus.
+    page.goto(base + "?view=map")
+    page.wait_for_selector("#panel-map:not([hidden]) .leaflet-marker-icon")
+    require(page.inner_text("#map-fullwindow") == "Full window", "Full window button")
+    page.click("#map-fullwindow")
+    require(page.evaluate("document.getElementById('map-dialog').matches(':modal')"), "Full window should be a modal dialog")
+    require(page.evaluate("!!document.querySelector('#map-dialog #map') && !!document.querySelector('#map-dialog #map-places')"), "The map and locations list move into the dialog")
+    require(page.inner_text("#map-fullwindow") == "Exit full window" and page.evaluate("document.activeElement.id") == "map-fullwindow", "Exit full window button has focus")
+    require(page.evaluate("document.getElementById('map').offsetHeight") >= 288, "The full window map has room")
+    page.locator(".reach-pin").first.click()
+    require(page.is_visible("#map-selection") and page.evaluate("!!document.querySelector('#map-dialog #map-selection')"), "Details stay available in the full window")
+    page.keyboard.press("Escape")
+    page.keyboard.press("Escape")
+    require(not page.evaluate("document.getElementById('map-dialog').open"), "Escape closes the full window")
+    page.locator("#map-stage-home #map-stage").wait_for()  # the close event runs after the dialog closes
+    require(page.evaluate("document.getElementById('map-stage').parentElement.id") == "map-stage-home", "The map returns to the page")
+    require(page.evaluate("document.activeElement.id") == "map-fullwindow" and page.inner_text("#map-fullwindow") == "Full window", "Focus returns to the Full window button")
+    # Clusters: nearby locations group together, named by what they hold, keyboard operable, and a clustered place can still be chosen.
+    def many(route):
+        response = route.fetch()
+        data = response.json()
+        base_record = data["records"][0]
+        for i in range(8):
+            record = json.loads(json.dumps(base_record))
+            record.update(id="eng-%010x" % (0xabc000 + i), eventName=f"Synthetic {i}", location=f"Test place {i}",
+                          place={"kind": "physical", "geo": {"latitude": 37.90 + 0.004 * i, "longitude": -122.53 + 0.003 * i}})
+            data["records"].append(record)
+        route.fulfill(response=response, json=data)
+    require(page.locator(".reach-cluster").count() >= 1, "Nearby locations are clustered even with the real data")
+    page.route("**/data/engagements.json", many)
+    page.goto(base + "?view=map")
+    page.wait_for_selector("#panel-map:not([hidden]) .leaflet-marker-icon")
+    require(page.locator(".reach-cluster").count() >= 1, "Fifteen locations should cluster")
+    names = page.locator(".reach-cluster").evaluate_all("els => els.map(e => [e.getAttribute('role'), e.tabIndex, e.textContent])")
+    require(all(n[0] == "button" and n[1] == 0 and "locations" in n[2] and "Press Enter to zoom in" in n[2] for n in names), f"Cluster names: {names}")
+    before = page.locator(".reach-pin").count()
+    page.locator(".reach-cluster").first.focus()
+    page.keyboard.press("Enter")
+    page.wait_for_timeout(1200)
+    require(page.evaluate("document.activeElement.id") == "map", "Focus moves to the map when a cluster splits")
+    require(page.locator(".reach-pin").count() > before, "Activating a cluster zooms in and shows more markers")
+    page.goto(base + "?view=map")
+    page.wait_for_selector("#panel-map:not([hidden]) .leaflet-marker-icon")
+    page.locator("#map-places button", has_text="Test place 3").click()
+    page.locator(".reach-pin.is-selected").wait_for(timeout=8000)  # the map zooms out of the cluster first
+    require(page.inner_text("#map-selection-title") == "Test place 3" and page.locator(".reach-pin.is-selected").count() == 1,
+            "A clustered place from the list is revealed and selected")
+    page.unroute("**/data/engagements.json")
+    page.emulate_media(reduced_motion="no-preference")
+
     page.set_viewport_size({"width": 360, "height": 740})
     page.goto(base + "?view=map")
     page.wait_for_selector("#panel-map:not([hidden]) .leaflet-marker-icon")
