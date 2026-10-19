@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Convert the Community Engagement Tracker CSV into data/engagements.json and static RSS feeds.
+"""Convert the Marin Reach JSON-LD engagement graph into data/engagements.json and static RSS feeds.
 
 Standard library only. Fails with a row number on invalid input.
 
@@ -7,9 +7,7 @@ Standard library only. Fails with a row number on invalid input.
   python3 scripts/build_data.py --check   # verify the committed files are current (no writes)
 """
 import argparse
-import csv
 import hashlib
-import io
 import json
 import re
 import sys
@@ -21,7 +19,7 @@ from xml.sax.saxutils import escape
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-SOURCE = ROOT / "data" / "source" / "community-engagement-tracker.csv"
+SOURCE = ROOT / "data" / "source" / "marin-reach-engagements.json"
 ALIASES = ROOT / "data" / "aliases.json"
 SCHEMA = ROOT / "data" / "schema" / "engagement.schema.json"
 OUTPUT = ROOT / "data" / "engagements.json"
@@ -29,25 +27,16 @@ REPORT = ROOT / "data" / "ambiguities.md"
 FEEDS = ROOT / "feeds"
 MANIFEST = ROOT / "marin.yml"
 
-# CSV header (after trimming) -> record field.
-COLUMNS = {
-    "Project": "project",
-    "Owner": "owner",
-    "Agency/Department": "agencies",
-    "Partner": "partners",
-    "Audience": "audience",
-    "Event Name": "eventName",
-    "Type of Engagement": "type",
-    "Geographic Area": "geographicAreas",
-    "Date": "date",
-    "Start Time": "startTime",
-    "End Time": "endTime",
-    "Location": "location",
-    "Engagement Status": "status",
-}
-MULTI = {"agencies": "agencies", "partners": "partners", "geographicAreas": "geographicAreas"}
+MULTI = ("agencies", "partners", "geographicAreas")
 STATUSES = ["Planned", "Canceled", "Completed"]
 LIST_DELIMITER = ";"  # commas appear inside names, so they are never delimiters
+# Event additionalProperty names that map to record fields. Other properties are ignored.
+PROPERTIES = {
+    "Owner": "owner",
+    "Type of Engagement": "type",
+    "Geographic Area": "geographicAreas",
+    "Engagement Status": "status",
+}
 
 
 class DataError(Exception):
@@ -55,27 +44,21 @@ class DataError(Exception):
 
 
 def clean(value):
-    return re.sub(r"\s+", " ", value or "").strip()
+    return re.sub(r"\s+", " ", value or "").strip() if isinstance(value, (str, type(None))) else ""
 
 
-def parse_date(value, where):
-    for fmt in ("%m/%d/%Y", "%Y-%m-%d"):
-        try:
-            return datetime.strptime(value, fmt).strftime("%Y-%m-%d")
-        except ValueError:
-            pass
-    raise DataError(f"{where}: Date {value!r} is not M/D/YYYY or YYYY-MM-DD")
-
-
-def parse_time(value, where, label):
-    if not value:
-        return None
-    for fmt in ("%I:%M:%S %p", "%I:%M %p", "%H:%M:%S", "%H:%M"):
-        try:
-            return datetime.strptime(value.upper(), fmt).strftime("%H:%M")
-        except ValueError:
-            pass
-    raise DataError(f"{where}: {label} {value!r} is not a recognizable time")
+def parse_when(value, where, label):
+    """Split an ISO date or date-time into (YYYY-MM-DD, HH:MM or None), keeping the written local time."""
+    match = re.fullmatch(r"(\d{4}-\d{2}-\d{2})(?:T(\d{2}:\d{2})(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:\d{2})?)?", clean(value))
+    if not match:
+        raise DataError(f"{where}: {label} {value!r} is not YYYY-MM-DD or an ISO date-time")
+    try:
+        datetime.strptime(match.group(1), "%Y-%m-%d")
+        if match.group(2):
+            datetime.strptime(match.group(2), "%H:%M")
+    except ValueError:
+        raise DataError(f"{where}: {label} {value!r} is not a real date or time")
+    return match.group(1), match.group(2)
 
 
 def split_list(value):
@@ -96,57 +79,139 @@ def load_aliases():
     }
 
 
+def ref_names(node, field, nodes, where):
+    """Names of the entities a field points at ({"@id": ...} or a list of them)."""
+    names = []
+    for ref in node.get(field) if isinstance(node.get(field), list) else [node.get(field)]:
+        if ref is None:
+            continue
+        target = nodes.get(ref.get("@id")) if isinstance(ref, dict) and set(ref) == {"@id"} else ref
+        if not isinstance(target, dict) or not clean(target.get("name")):
+            raise DataError(f"{where}: {field} {ref!r} does not resolve to a named entity in the graph")
+        names.append(clean(target["name"]))
+    return names
+
+
+ADDRESS_FIELDS = {
+    "streetAddress": "streetAddress", "addressLocality": "locality", "addressRegion": "region",
+    "postalCode": "postalCode", "addressCountry": "country",
+}
+# Generous Marin County box. Coordinates outside it are reported, never rejected or moved.
+MARIN_BOUNDS = {"lat": (37.7, 38.4), "lon": (-123.2, -122.3)}
+
+
+def parse_geo(geo, where):
+    """Validate Schema.org GeoCoordinates. Both values are required together and must be numbers in range."""
+    if not isinstance(geo, dict):
+        raise DataError(f"{where}: geo must be a GeoCoordinates object")
+    lat, lon = geo.get("latitude"), geo.get("longitude")
+    if lat is None or lon is None:
+        raise DataError(f"{where}: geo needs both latitude and longitude")
+    for label, value, limit in (("latitude", lat, 90), ("longitude", lon, 180)):
+        if isinstance(value, bool) or not isinstance(value, (int, float)):
+            raise DataError(f"{where}: geo {label} {value!r} must be a number")
+        if not -limit <= value <= limit:
+            raise DataError(f"{where}: geo {label} {value!r} must be between -{limit} and {limit}")
+    return {"latitude": float(lat), "longitude": float(lon)}
+
+
+def build_place(target, where):
+    """The map-facing facts about a location: kind, optional address, optional coordinates. Never guessed."""
+    if target.get("@type") == "VirtualLocation":
+        return {"kind": "virtual"}
+    place = {"kind": "physical"}
+    address = target.get("address")
+    if isinstance(address, dict):
+        parts = {out: clean(address.get(src)) for src, out in ADDRESS_FIELDS.items() if clean(address.get(src))}
+        if parts:
+            place["address"] = parts
+    if "geo" in target:
+        place["geo"] = parse_geo(target["geo"], where)
+    return place
+
+
+def resolve_ref(node, field, nodes, where):
+    """Single entity a field points at ({"@id": ...} or inline), or None when the field is absent."""
+    ref = node.get(field)
+    if ref is None:
+        return None
+    target = nodes.get(ref.get("@id")) if isinstance(ref, dict) and set(ref) == {"@id"} else ref
+    if not isinstance(target, dict):
+        raise DataError(f"{where}: {field} {ref!r} does not resolve to an entity in the graph")
+    return target
+
+
 def build_records(text, aliases):
-    if "�" in text:
-        raise DataError("Source contains U+FFFD replacement characters; fix the character encoding in the CSV.")
-    reader = csv.reader(io.StringIO(text))
+    if "\ufffd" in text:
+        raise DataError("Source contains U+FFFD replacement characters; fix the character encoding in the JSON.")
     try:
-        header = [clean(h) for h in next(reader)]
-    except StopIteration:
-        raise DataError("Source CSV is empty")
-    unknown = [h for h in header if h not in COLUMNS]
-    missing = [h for h in COLUMNS if h not in header]
-    if unknown or missing:
-        raise DataError(f"CSV headers do not match the data contract. Unknown: {unknown}. Missing: {missing}.")
+        doc = json.loads(text)
+    except json.JSONDecodeError as err:
+        raise DataError(f"Source is not valid JSON: {err}")
+    graph = doc.get("@graph") if isinstance(doc, dict) else None
+    if not isinstance(graph, list):
+        raise DataError("Source must be a JSON-LD document with an @graph array")
+    nodes = {n["@id"]: n for n in graph if isinstance(n, dict) and "@id" in n}
 
     records, used_ids = [], set()
-    for line_no, row in enumerate(reader, start=2):
-        if not any(clean(c) for c in row):
+    for node in graph:
+        if not isinstance(node, dict) or node.get("@type") != "Event":
             continue
-        if len(row) != len(header):
-            raise DataError(f"Row {line_no}: expected {len(header)} columns, found {len(row)}")
-        where = f"Row {line_no}"
-        cells = {COLUMNS[h]: clean(v) for h, v in zip(header, row)}
-        if not cells["project"]:
-            raise DataError(f"{where}: Project is required")
-        if not cells["date"]:
-            raise DataError(f"{where}: Date is required")
-        status = next((s for s in STATUSES if s.casefold() == cells["status"].casefold()), None)
-        if not status:
-            raise DataError(f"{where}: Engagement Status {cells['status']!r} must be one of {STATUSES}")
+        where = f"Event {node.get('@id', clean(node.get('name')))}"
+        props = {}
+        for prop in node.get("additionalProperty", []):
+            if prop.get("name") in PROPERTIES:
+                props[PROPERTIES[prop["name"]]] = clean(prop.get("value"))
 
-        record = {"project": cells["project"], "owner": cells["owner"] or None}
+        projects = ref_names(node, "about", nodes, where)
+        if len(projects) != 1:
+            raise DataError(f"{where}: exactly one project is required in 'about'")
+        if "startDate" not in node:
+            raise DataError(f"{where}: startDate is required")
+        status = next((s for s in STATUSES if s.casefold() == props.get("status", "").casefold()), None)
+        if not status:
+            raise DataError(f"{where}: Engagement Status {props.get('status')!r} must be one of {STATUSES}")
+        date, start_time = parse_when(node["startDate"], where, "startDate")
+        end_time = None
+        if node.get("endDate"):
+            end_date, end_time = parse_when(node["endDate"], where, "endDate")
+            if end_date != date:
+                raise DataError(f"{where}: endDate must be on the same day as startDate")
+
+        audience = node.get("audience") or {}
+        location = resolve_ref(node, "location", nodes, where)
+        location_name = clean(location.get("name")) if location else ""
+        if location is not None and not location_name and location.get("@type") != "VirtualLocation":
+            raise DataError(f"{where}: location has no name")
+        place = build_place(location, where) if location is not None else None
+        source_values = {
+            "agencies": ref_names(node, "organizer", nodes, where),
+            "partners": ref_names(node, "sponsor", nodes, where),
+            "geographicAreas": split_list(props.get("geographicAreas", "")),
+        }
+        record = {"project": projects[0], "owner": props.get("owner") or None}
         raw = {}
         for field in MULTI:
-            source_values = split_list(cells[field])
             display = []
-            for value in source_values:
+            for value in source_values[field]:
                 shown = aliases[field].get(value.casefold(), value)
                 if shown.casefold() not in {d.casefold() for d in display}:
                     display.append(shown)
             record[field] = display
-            if display != source_values:
-                raw[field] = source_values
+            if display != source_values[field]:
+                raw[field] = source_values[field]
         record.update(
-            audience=cells["audience"] or None,
-            eventName=cells["eventName"] or None,
-            type=cells["type"] or None,
-            date=parse_date(cells["date"], where),
-            startTime=parse_time(cells["startTime"], where, "Start Time"),
-            endTime=parse_time(cells["endTime"], where, "End Time"),
-            location=cells["location"] or None,
+            audience=clean(audience.get("audienceType")) or None,
+            eventName=clean(node.get("name")) or None,
+            type=props.get("type") or None,
+            date=date,
+            startTime=start_time,
+            endTime=end_time,
+            location=location_name or ("Virtual" if place and place["kind"] == "virtual" else None),
             status=status,
         )
+        if place:
+            record["place"] = place
         if raw:
             record["raw"] = raw
 
@@ -180,9 +245,14 @@ def validate(node, schema, root, path="$"):
     types = schema.get("type")
     if types:
         names = types if isinstance(types, list) else [types]
-        py = {"string": str, "object": dict, "array": list, "null": type(None)}
-        if not any(isinstance(node, py[t]) for t in names):
+        py = {"string": str, "object": dict, "array": list, "null": type(None), "number": (int, float)}
+        if not any(isinstance(node, py[t]) and not isinstance(node, bool) for t in names):
             raise DataError(f"{path}: expected {names}, found {type(node).__name__}")
+    if isinstance(node, (int, float)) and not isinstance(node, bool):
+        if "minimum" in schema and node < schema["minimum"]:
+            raise DataError(f"{path}: {node!r} is below {schema['minimum']}")
+        if "maximum" in schema and node > schema["maximum"]:
+            raise DataError(f"{path}: {node!r} is above {schema['maximum']}")
     if isinstance(node, str):
         if len(node) < schema.get("minLength", 0):
             raise DataError(f"{path}: must not be empty")
@@ -212,7 +282,7 @@ def normalize_key(value):
 def ambiguity_report(records, aliases):
     lines = ["# Data ambiguities", "",
              "Generated by `scripts/build_data.py`. Nothing here is merged automatically; "
-             "resolve each item in the source CSV or in `data/aliases.json`.", ""]
+             "resolve each item in the source JSON or in `data/aliases.json`.", ""]
     findings = []
     for field, label in (("agencies", "Agency/Department"), ("geographicAreas", "Geographic Area")):
         alias_targets = {v.casefold() for v in aliases[field].values()}
@@ -235,6 +305,13 @@ def ambiguity_report(records, aliases):
     for variants in groups.values():
         if len(variants) > 1:
             findings.append(f"- Audience values may be the same: {', '.join(f'`{v}`' for v in sorted(variants))}.")
+    for r in records:
+        geo = r.get("place", {}).get("geo")
+        if geo and not (MARIN_BOUNDS["lat"][0] <= geo["latitude"] <= MARIN_BOUNDS["lat"][1]
+                        and MARIN_BOUNDS["lon"][0] <= geo["longitude"] <= MARIN_BOUNDS["lon"][1]):
+            findings.append(f"- Coordinates for `{r['location']}` ({geo['latitude']}, {geo['longitude']}) fall outside "
+                            "Marin County; confirm they are correct (they are kept as supplied).")
+    findings = sorted(set(findings))
     lines += findings or ["No ambiguous values found."]
     return "\n".join(lines) + "\n"
 
@@ -309,7 +386,7 @@ def build_feeds(records):
 
 
 def generate():
-    text = SOURCE.read_text(encoding="utf-8-sig")
+    text = SOURCE.read_text(encoding="utf-8")
     aliases = load_aliases()
     records = build_records(text, aliases)
     dataset = {"schemaVersion": 1, "source": SOURCE.name, "records": records}

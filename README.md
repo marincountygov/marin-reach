@@ -10,14 +10,15 @@
 
 ## What it does
 
-- **List** (default), **Calendar** (month grid, with an agenda on small screens) and **Stats** tabs, laid out like marin-mentions. All three read the same filtered records.
+- **List** (default), **Calendar** (month grid, with an agenda on small screens), **Map** and **Stats** tabs, laid out like marin-mentions. All four read the same filtered records.
 - A persistent filter sidebar (a toggle on small screens): search with Reset, a Date range, then collapsed dropdowns, like the monitors in marin-mentions, with multi-select checkboxes for Audience, Type, Project, Agency/Department, Partner, Status, Location and Owner. Choices within a facet combine with OR; facets combine with AND.
 - The list, CSV and copied text are newest date first.
 - A "Showing:" line that describes the active filters and counts.
 - List: a checkbox per listing and Select all, plus Copy, Link, CSV and RSS buttons. Copy and CSV use the checked listings, or everything shown when none are checked. RSS is available for all engagements or one project.
+- Map: a Leaflet map of engagement locations (`?view=map`). Each marker is a keyboard-focusable button; choosing one shows its address and engagements below the map, each with a Copy button, and a Clear button under the map clears the choice. Under the map, a Locations list does the same as the markers, Re-center reframes all markers, and each place has Copy and Get directions. The chosen place is in the URL (`place=`) so it can be shared. List and Calendar listings have Show on map. A status line gives the mapped and unmapped counts (virtual, no coordinates, no location). Engagements at the same coordinates share a marker. Engagements without coordinates stay in List. Coordinates come from the source data and are never guessed. Leaflet 1.9.4 is vendored in `vendor/leaflet/`; tiles come from OpenStreetMap (see [docs/decisions.md](docs/decisions.md)).
 - Stats: Planned, Completed, Canceled and Partners, and charts for events over time, by agency/department and by project, each with a PNG button, plus Copy and All PNG.
 - Filter, search and view state live in the URL query string, so filtered pages can be bookmarked and shared.
-- Not in v1: authentication, a database or CMS, notifications, metadata fields, AI, submission workflow, or a map. See [docs/decisions.md](docs/decisions.md).
+- Not in v1: authentication, a database or CMS, notifications, metadata fields, AI, or a submission workflow. See [docs/decisions.md](docs/decisions.md).
 
 ## Run locally
 
@@ -33,24 +34,24 @@ Open `http://127.0.0.1:8765/`. Use HTTP rather than `file://`; the app fetches `
 
 | Command | Purpose |
 |---|---|
-| `python3 scripts/build_data.py` | Convert `data/source/*.csv` to `data/engagements.json`, refresh `data/ambiguities.md`, and regenerate `feeds/*.xml` |
+| `python3 scripts/build_data.py` | Convert `data/source/marin-reach-engagements.json` to `data/engagements.json`, refresh `data/ambiguities.md`, and regenerate `feeds/*.xml` |
 | `python3 scripts/build_data.py --check` | Fail if the committed data files are out of date |
 | `bash scripts/check.sh` | Lint-level checks, data check, Python and Node unit tests |
 | `bash scripts/check.sh --browser` | Also runs the browser workflow and CSP tests (needs Playwright for Python and Chromium) |
 
 ## Updating the data
 
-1. Replace `data/source/community-engagement-tracker.csv` with the new export (UTF-8).
-2. Run `python3 scripts/build_data.py`. It fails with a row number on invalid data.
+1. Edit `data/source/marin-reach-engagements.json` (JSON-LD, UTF-8): add or change Event entries, and the Project, Person, Organization and Place entries they point to.
+2. Run `python3 scripts/build_data.py`. It fails with the event id on invalid data.
 3. Read `data/ambiguities.md`; fix the source or add an alias in `data/aliases.json`.
-4. Commit the CSV and the regenerated `data/engagements.json` and `feeds/` together. Pages serves the committed file.
+4. Commit the source JSON and the regenerated `data/engagements.json` and `feeds/` together. Pages serves the committed file.
 
 See [docs/data-dictionary.md](docs/data-dictionary.md) for fields, normalization rules and the schema.
 
 ## Architecture
 
 ```text
-data/source/*.csv --scripts/build_data.py--> data/engagements.json (validated against data/schema/) + feeds/*.xml
+data/source/*.json --scripts/build_data.py--> data/engagements.json (validated against data/schema/) + feeds/*.xml
                                                    |
                                   assets/selectors.js  (pure filter, calendar, stats functions)
                                                    |

@@ -20,6 +20,10 @@
     selected: new Set(),
     charts: {},
     lastFocus: null,
+    map: null,
+    markers: new Map(),
+    mapSelected: null,
+    mapSignature: null,
   };
 
   const $ = (id) => document.getElementById(id);
@@ -127,7 +131,11 @@
 
   // --- records ---
 
-  function renderRecord(r, headingLevel, withCheckbox) {
+  function renderRecord(r, headingLevel, withCheckbox, withCopy, withMapLink) {
+    if (withCopy === undefined) withCopy = withCheckbox;
+    // Listings and the details dialog link to the map; the cards on the map itself do not.
+    if (withMapLink === undefined) withMapLink = true;
+    withMapLink = withMapLink && !!S.placeKey(r);
     const heading = S.label(r);
     // Per-listing controls are named with the date and time so repeated titles stay distinct.
     const named = heading + ', ' + S.formatDate(r.date) + (S.formatTimeRange(r) ? ', ' + S.formatTimeRange(r) : '');
@@ -140,13 +148,15 @@
       h('h' + headingLevel, { class: 'mm-card__title' + (r.status === 'Canceled' ? ' is-canceled' : ''), text: heading }),
       h('dl', { class: 'reach-record__meta' }, rows),
     ];
-    if (withCheckbox) {
+    if (withCopy) {
       const copy = h('button', { type: 'button', class: 'copy-button', 'aria-label': 'Copy engagement: ' + named }, [
         copyIcon(), checkIcon(),
       ]);
       const status = h('p', { class: 'app-help-text mm-card__copy-status', role: 'status' });
       copy.addEventListener('click', () => copyItem(r, copy, status));
-      parts.push(h('div', { class: 'mm-card__copy-actions' }, [copy, status]));
+      parts.push(h('div', { class: 'mm-card__copy-actions' }, [copy, withMapLink ? mapButton(r, named) : null, status]));
+    } else if (withMapLink) {
+      parts.push(h('div', { class: 'mm-card__copy-actions' }, mapButton(r, named)));
     }
     const body = h('div', { class: 'mm-card__body' }, parts);
     const kids = [];
@@ -158,6 +168,14 @@
     }
     kids.push(body);
     return h(withCheckbox ? 'li' : 'article', { class: 'app-card mm-card', 'data-status': r.status.toLowerCase() }, kids);
+  }
+
+  function mapButton(r, named) {
+    const button = h('button', { type: 'button', class: 'copy-button show-on-map-button', 'aria-label': 'Show on map: ' + named, title: 'Show on map' }, [
+      svgIcon('map-pin-icon', '<path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/>'),
+    ]);
+    button.addEventListener('click', () => showOnMap(r));
+    return button;
   }
 
   function svgIcon(cls, markup) {
@@ -533,37 +551,258 @@
     say(copyRichOrFallback(html, text.join('\n').trim()) ? 'Copied charts to clipboard.' : FALLBACK_MESSAGE);
   }
 
-  // RSS: static feeds exist for all engagements and for each single project.
+  // RSS: static feeds exist for all engagements and for each single project. With any other filter, search or
+  // date range there is no matching feed, so the button is hidden.
   function updateRssLink() {
     const link = $('rss-feed-link');
     const st = app.state;
     const others = S.FACETS.some((f) => f.key !== 'project' && st.facets[f.key].length);
     let href = null;
-    let reason = '';
-    if (st.q) reason = "RSS feeds aren't available for search results.";
-    else if (st.from || st.to) reason = "RSS feeds aren't available when filtering by date.";
-    else if (others) reason = 'RSS feeds are only available for all engagements or a single project.';
-    else if (st.facets.project.length > 1) reason = 'RSS feeds are only available for a single project at a time.';
-    else href = st.facets.project.length === 1 ? 'feeds/project-' + S.slugify(st.facets.project[0]) + '.xml' : 'feeds/all.xml';
-    if (href) {
-      link.setAttribute('href', href);
-      link.removeAttribute('aria-disabled');
-      link.removeAttribute('title');
-    } else {
-      link.removeAttribute('href');
-      link.setAttribute('aria-disabled', 'true');
-      link.title = reason;
+    if (!st.q && !st.from && !st.to && !others && st.facets.project.length <= 1) {
+      href = st.facets.project.length === 1 ? 'feeds/project-' + S.slugify(st.facets.project[0]) + '.xml' : 'feeds/all.xml';
     }
-    $('rss-feed-status').textContent = reason;
+    if (href) link.setAttribute('href', href);
+    else link.removeAttribute('href');
+    app.rssAvailable = !!href;
+  }
+
+  // --- map ---
+
+  // Initial extent when nothing is mapped: Marin County. Markers always come from the data.
+  const MARIN_EXTENT = [[37.82, -123.02], [38.33, -122.42]];
+  // OpenStreetMap standard tiles (https://operations.osmfoundation.org/policies/tiles/): no key, light use only.
+  // The host is allowed in security.json (img-src). The attribution must stay visible.
+  const TILES = {
+    url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    maxZoom: 19,
+  };
+  const PIN_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">' +
+    '<path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/>' +
+    '<circle cx="12" cy="10" r="3"/></svg>';
+
+  function ensureMap() {
+    if (app.map) return app.map;
+    const still = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    // The wheel and one-finger drag are left to the page until the map is used, so scrolling past it is easy.
+    // Phones and tablets pan and zoom with two fingers.
+    const map = L.map($('map'), {
+      attributionControl: false, zoomSnap: 0.5, zoomAnimation: !still, fadeAnimation: !still, markerZoomAnimation: !still,
+      scrollWheelZoom: false, dragging: !L.Browser.mobile,
+    });
+    map.on('click focus', () => map.scrollWheelZoom.enable());
+    map.on('mouseout blur', () => map.scrollWheelZoom.disable());
+    L.control.attribution({ prefix: '<a href="https://leafletjs.com">Leaflet</a>' }).addTo(map);
+    L.tileLayer(TILES.url, { attribution: TILES.attribution, maxZoom: TILES.maxZoom }).addTo(map);
+    map.getContainer().setAttribute('role', 'region');
+    map.getContainer().setAttribute('aria-label', 'Map of engagement locations');
+    map.fitBounds(MARIN_EXTENT);
+    // The zoom controls are links with role="button"; Space should work on them like it does on a button.
+    map.getContainer().addEventListener('keydown', (e) => {
+      if (e.key === ' ' && e.target.closest && e.target.closest('.leaflet-control-zoom a')) {
+        e.preventDefault();
+        e.target.click();
+      }
+    });
+    app.map = map;
+    return map;
+  }
+
+  function markerElement(key) {
+    const entry = app.markers.get(key);
+    return entry && entry.marker.getElement();
+  }
+
+  // `focus` moves focus to the details (keyboard and screen-reader use); `pan` centers the map on the location.
+  function selectLocation(key, focus, pan) {
+    const entry = app.markers.get(key);
+    if (!entry) return;
+    app.mapSelected = key;
+    app.state.place = key;
+    writeUrl();
+    app.markers.forEach((e, k) => {
+      const el = e.marker.getElement();
+      if (el) el.classList.toggle('is-selected', k === key);
+    });
+    renderSelection();
+    syncPlaces();
+    if (pan && app.map) app.map.panTo([entry.group.latitude, entry.group.longitude]);
+    const title = $('map-selection-title');
+    if (focus) title.focus();
+    else title.scrollIntoView({ block: 'nearest' });
+  }
+
+  function clearSelection(returnFocus) {
+    const key = app.mapSelected;
+    app.mapSelected = null;
+    app.state.place = '';
+    writeUrl();
+    app.markers.forEach((entry) => {
+      const el = entry.marker.getElement();
+      if (el) el.classList.remove('is-selected');
+    });
+    renderSelection();
+    syncPlaces();
+    const el = returnFocus && key && markerElement(key);
+    if (el) el.focus();
+  }
+
+  // The same places as the markers, as a text list: an alternative to the map itself.
+  function renderPlaces(locations) {
+    const list = $('map-places');
+    list.textContent = '';
+    $('map-places-section').hidden = locations.length === 0;
+    locations.forEach((group) => {
+      const button = h('button', { type: 'button', class: 'secondary', 'data-place': group.key,
+        text: group.name + ' (' + group.records.length + ')' });
+      button.addEventListener('click', () => selectLocation(group.key, true, true));
+      list.append(h('li', {}, button));
+    });
+    syncPlaces();
+  }
+
+  function syncPlaces() {
+    document.querySelectorAll('#map-places button').forEach((button) => {
+      button.setAttribute('aria-pressed', String(button.dataset.place === app.mapSelected));
+    });
+  }
+
+  // The details for the selected marker live below the map, as ordinary page content, so they work the
+  // same with a keyboard, a screen reader and a phone. Nothing shows until a marker is chosen.
+  function renderSelection() {
+    const entry = app.mapSelected && app.markers.get(app.mapSelected);
+    const section = $('map-selection');
+    const body = $('map-selection-body');
+    body.textContent = '';
+    section.hidden = !entry;
+    $('map-clear').hidden = !entry;
+    if (!entry) {
+      $('map-selection-title').textContent = '';
+      return;
+    }
+    const group = entry.group;
+    $('map-selection-title').textContent = group.name;
+    group.address.forEach((line) => body.append(h('p', { class: 'reach-map-line', text: line })));
+    body.append(h('p', { class: 'reach-map-count', text: '(' + S.plural(group.records.length, 'engagement') + ')' }));
+    const copy = h('button', { type: 'button', class: 'secondary mm-copy-button', 'aria-label': 'Copy location and its engagements: ' + group.name, text: 'Copy' });
+    const status = h('p', { class: 'app-help-text mm-card__copy-status', role: 'status' });
+    copy.addEventListener('click', () => {
+      const block = S.buildPlaceBlock(group);
+      say(copyRichOrFallback(block.html, block.text) ? 'Copied location to clipboard.' : FALLBACK_MESSAGE, status);
+    });
+    const directions = h('a', { role: 'button', class: 'secondary mm-copy-button', href: S.directionsUrl(group), target: '_blank', rel: 'noreferrer',
+      'aria-label': 'Get directions to ' + group.name + ' (opens in a new tab)', text: 'Get directions' });
+    body.append(h('div', { class: 'reach-map-actions' }, [copy, directions]), status);
+    const list = h('ul', { class: 'reach-map-events' });
+    group.records.forEach((r) => list.append(h('li', {}, renderRecord(r, 4, false, true, false))));
+    body.append(list);
+  }
+
+  // Escape in the details goes back to the marker that opened them.
+  function bindMapSelection() {
+    $('map-selection').addEventListener('keydown', (e) => {
+      if (e.key !== 'Escape') return;
+      const el = markerElement(app.mapSelected);
+      if (el) { e.preventDefault(); el.focus(); }
+    });
+    $('map-clear').addEventListener('click', () => clearSelection(true));
+    $('map-reset').addEventListener('click', () => { if (app.map) fitMap(); });
+  }
+
+  function renderMap() {
+    const points = S.mapPoints(app.filtered, todayISO());
+    app.mapLocations = points.locations;
+    $('map-status').textContent = S.mapSummary(app.filtered).text;
+    const empty = points.locations.length === 0;
+    $('map-empty').hidden = !empty;
+    $('map-reset').hidden = empty;
+    $('map-empty-text').textContent = app.filtered.length === 0
+      ? 'No engagements match these filters.' : 'No mapped engagements match these filters.';
+    if (typeof L === 'undefined') {
+      $('map').hidden = true;
+      $('map-selection').hidden = true;
+      $('map-empty').hidden = false;
+      $('map-empty-text').textContent = 'The map could not load. Every engagement is still available in List.';
+      return;
+    }
+    const map = ensureMap();
+    map.invalidateSize(); // the panel was hidden when the map was created
+
+    const keys = new Set(points.locations.map((g) => g.key));
+    app.markers.forEach((entry, key) => {
+      if (!keys.has(key)) { entry.marker.remove(); app.markers.delete(key); }
+    });
+    points.locations.forEach((group) => {
+      const name = S.markerLabel(group);
+      let entry = app.markers.get(group.key);
+      if (!entry) {
+        const marker = L.marker([group.latitude, group.longitude], {
+          icon: L.divIcon({ className: 'reach-pin', html: PIN_SVG, iconSize: [36, 36], iconAnchor: [18, 33] }),
+          title: name,
+          keyboard: true,
+        }).addTo(map);
+        entry = { marker: marker, group: group };
+        app.markers.set(group.key, entry);
+        // Leaflet only turns Enter into a click for popups, so the marker (role="button") handles Enter and
+        // Space itself. Keyboard activation moves focus to the details; a pointer click leaves focus alone.
+        // A click with no pointer behind it (detail 0) comes from a screen reader or keyboard, so focus moves too.
+        marker.on('click', (e) => selectLocation(group.key, !e.originalEvent || e.originalEvent.detail === 0, false));
+        marker.getElement().addEventListener('keydown', (e) => {
+          if (e.key !== 'Enter' && e.key !== ' ') return;
+          e.preventDefault();
+          e.stopPropagation();
+          selectLocation(group.key, true, false);
+        });
+      }
+      entry.group = group;
+      const el = entry.marker.getElement();
+      el.setAttribute('aria-label', name);
+      el.title = name;
+    });
+
+    // The selected location lives in the URL state; drop it when the filters have removed that location.
+    const wanted = app.state.place;
+    app.mapSelected = wanted && app.markers.has(wanted) ? wanted : null;
+    if (wanted && !app.mapSelected) { app.state.place = ''; writeUrl(); }
+    app.markers.forEach((entry, key) => entry.marker.getElement().classList.toggle('is-selected', key === app.mapSelected));
+    renderSelection();
+    renderPlaces(points.locations);
+
+    // Refit only when the set of locations changes, so panning and zooming are not undone by a re-render.
+    const signature = points.locations.map((g) => g.key).join('|');
+    if (signature !== app.mapSignature) {
+      app.mapSignature = signature;
+      fitMap();
+    }
+  }
+
+  // Frames every marker: Marin County when there are none, a close view for one, all of them otherwise.
+  function fitMap() {
+    const locations = app.mapLocations || [];
+    if (!locations.length) app.map.fitBounds(MARIN_EXTENT);
+    else if (locations.length === 1) app.map.setView([locations[0].latitude, locations[0].longitude], 15);
+    else app.map.fitBounds(locations.map((g) => [g.latitude, g.longitude]), { padding: [48, 48], maxZoom: 16 });
+  }
+
+  // Opens the map on one engagement's location. Used by the Show on map buttons.
+  function showOnMap(record) {
+    const key = S.placeKey(record);
+    const dialog = $('record-dialog');
+    if (dialog.open && typeof dialog.close === 'function') dialog.close();
+    app.state.place = key;
+    setView('map', false);
+    selectLocation(key, true, true);
   }
 
   // --- orchestration ---
 
   function renderView() {
     const view = app.state.view;
+    document.body.dataset.view = view;
+    $('map-status').hidden = view !== 'map';
     const list = view === 'list';
     $('no-results').hidden = !(list && app.filtered.length === 0);
-    ['list', 'calendar', 'stats'].forEach((v) => { $('panel-' + v).hidden = v !== view; });
+    ['list', 'calendar', 'map', 'stats'].forEach((v) => { $('panel-' + v).hidden = v !== view; });
     document.querySelectorAll('#view-tabs [role=tab]').forEach((tab) => {
       const on = tab.dataset.view === view;
       tab.setAttribute('aria-selected', String(on));
@@ -577,12 +816,12 @@
     $('sort-oldest').setAttribute('aria-pressed', String(app.state.sort === 'oldest'));
     $('copy-list-button').hidden = !list;
     $('download-data-button').hidden = !list;
-    $('rss-feed-link').hidden = !list;
-    $('rss-feed-status').hidden = !list;
+    $('rss-feed-link').hidden = !(list && app.rssAvailable);
     $('copy-stats-button').hidden = view !== 'stats';
     $('download-all-png-button').hidden = view !== 'stats';
     renderList();
     renderCalendar();
+    if (view === 'map') renderMap();
     // Chart.js sizes a canvas when it is created, so draw only once the panel is visible.
     renderStats(view === 'stats');
   }
@@ -654,6 +893,8 @@
       update(false);
     });
     $('reset-filters-button').addEventListener('click', resetFilters);
+    $('map-go-list').addEventListener('click', () => setView('list', true));
+    bindMapSelection();
 
     const tabs = Array.from(document.querySelectorAll('#view-tabs [role=tab]'));
     tabs.forEach((tab, i) => {

@@ -68,7 +68,7 @@ test('URL state round-trips and ignores invalid dates and views', () => {
   st.facets.agency = ['OCE', 'District 3'];
   const parsed = S.parseQuery(S.serializeState(st));
   assert.deepEqual(parsed, st);
-  const bad = S.parseQuery('?from=tomorrow&view=map');
+  const bad = S.parseQuery('?from=tomorrow&view=globe');
   assert.equal(bad.from, '');
   assert.equal(bad.view, 'list');
   assert.equal(S.parseQuery('?range=decade').range, 'month');
@@ -231,4 +231,113 @@ test('sorting by date: newest or oldest first, earliest start within a day, expo
   assert.deepEqual(dates(S.toCsv(input)), ['2026-11-14', '2026-11-14', '2026-10-03', '2026-04-01']);
   const text = S.buildDigest(input, 'x', 'oldest').text;
   assert.ok(text.indexOf('Apr 1, 2026') < text.indexOf('Nov 14, 2026'));
+});
+
+// --- map selectors ---
+
+const PHYSICAL = { kind: 'physical', address: { streetAddress: '180 Camino Alto', locality: 'Mill Valley', region: 'CA', postalCode: '94941' } };
+const at = (lat, lon, extra) => Object.assign({}, PHYSICAL, { geo: { latitude: lat, longitude: lon } }, extra);
+const mapData = [
+  rec({ id: 'm1', eventName: 'Workshop', date: '2026-11-19', location: 'Mill Valley CC', place: at(37.9, -122.5) }),
+  rec({ id: 'm2', eventName: 'Town Hall', date: '2026-10-21', location: 'Mill Valley CC', place: at(37.9, -122.5) }),
+  rec({ id: 'm3', date: '2026-11-12', location: 'Ross Hall', place: at(37.96, -122.55) }),
+  rec({ id: 'v1', location: 'Virtual', place: { kind: 'virtual' } }),
+  rec({ id: 'n1', location: 'Homestead', place: PHYSICAL }),
+  rec({ id: 'u1' }),
+];
+
+test('mapPoints groups exact coordinates and sorts events oldest first within a location', () => {
+  const { locations } = S.mapPoints(mapData);
+  assert.equal(locations.length, 2);
+  const mv = locations.find((l) => l.name === 'Mill Valley CC');
+  assert.deepEqual(mv.records.map((r) => r.id), ['m2', 'm1']);
+  assert.deepEqual(mv.address, ['180 Camino Alto', 'Mill Valley, CA 94941']);
+  assert.equal(mv.latitude, 37.9);
+});
+
+test('mapPoints reports why records are not mapped and never loses a record', () => {
+  const p = S.mapPoints(mapData);
+  assert.deepEqual(p.unmapped.map((u) => [u.record.id, u.reason]),
+    [['v1', 'virtual'], ['n1', 'no-coordinates'], ['u1', 'no-location']]);
+  const placed = p.locations.reduce((n, l) => n + l.records.length, 0);
+  assert.equal(placed + p.unmapped.length, mapData.length);
+});
+
+test('mapPoints handles zero and one record', () => {
+  assert.deepEqual(S.mapPoints([]), { locations: [], unmapped: [] });
+  assert.equal(S.mapPoints([mapData[2]]).locations.length, 1);
+});
+
+test('mapSummary counts only the records it is given', () => {
+  assert.equal(S.mapSummary(mapData).text,
+    '3 of 6 engagements shown on map. 3 engagements do not have a map location (1 virtual, 1 without coordinates, 1 without a location).');
+  assert.equal(S.mapSummary([mapData[0]]).text, '1 of 1 engagement shown on map.');
+  assert.equal(S.mapSummary([mapData[3]]).text, '0 of 1 engagement shown on map. 1 engagement does not have a map location (1 virtual).');
+  assert.equal(S.mapSummary([]).text, '0 of 0 engagements shown on map.');
+});
+
+test('map and the other views share one filtered set', () => {
+  const st = S.emptyState();
+  st.facets.project = ['Envision'];
+  const input = mapData.map((r) => Object.assign({}, r, { project: r.id === 'm1' ? 'Envision' : 'Other' }));
+  const filtered = S.applyFilters(input, st);
+  const p = S.mapPoints(filtered);
+  assert.deepEqual(filtered.map((r) => r.id), ['m1']);
+  assert.equal(p.locations.reduce((n, l) => n + l.records.length, 0) + p.unmapped.length, filtered.length);
+});
+
+test('markerLabel names the event and place, falling back to the project, or the place and count', () => {
+  const [mv, ross] = [S.mapPoints(mapData).locations.find((l) => l.name === 'Mill Valley CC'),
+    S.mapPoints(mapData).locations.find((l) => l.name === 'Ross Hall')];
+  assert.equal(S.markerLabel(ross), 'P at Ross Hall');
+  assert.equal(S.markerLabel(mv), 'Mill Valley CC \u2014 2 engagements');
+  assert.equal(S.markerLabel(S.mapPoints([mapData[0]]).locations[0]), 'Workshop at Mill Valley CC');
+});
+
+test('map is a recognized view between calendar and stats, and round-trips through the URL', () => {
+  assert.deepEqual(S.VIEWS, ['list', 'calendar', 'map', 'stats']);
+  const st = S.parseQuery('?view=map&project=Envision');
+  assert.equal(st.view, 'map');
+  assert.deepEqual(st.facets.project, ['Envision']);
+  assert.match(S.serializeState(st), /view=map/);
+  assert.deepEqual(S.parseQuery(S.serializeState(st)), st);
+});
+
+test('the selected map location is kept in the URL only on the map view and only if it is a coordinate pair', () => {
+  const st = S.parseQuery('?view=map&place=37.898796,-122.528346');
+  assert.equal(st.place, '37.898796,-122.528346');
+  assert.match(S.serializeState(st), /place=37\.898796%2C-122\.528346/);
+  assert.deepEqual(S.parseQuery(S.serializeState(st)), st);
+  st.view = 'list';
+  assert.doesNotMatch(S.serializeState(st), /place=/);
+  assert.equal(S.parseQuery('?view=map&place=<script>').place, '');
+  assert.equal(S.parseQuery('?view=map').place, '');
+});
+
+test('placeKey matches the map grouping key and is empty without coordinates', () => {
+  assert.equal(S.placeKey(mapData[0]), '37.9,-122.5');
+  assert.equal(S.placeKey(mapData[3]), '');
+  assert.equal(S.mapPoints(mapData).locations[0].key, S.placeKey(S.mapPoints(mapData).locations[0].records[0]));
+});
+
+test('mapPoints lists upcoming engagements first, soonest first, then past ones, latest first', () => {
+  const at1 = (id, date) => rec({ id: id, date: date, location: 'Hall', place: at(37.9, -122.5) });
+  const group = S.mapPoints([at1('p1', '2026-01-10'), at1('f2', '2026-12-01'), at1('p2', '2026-03-05'), at1('f1', '2026-10-20')], '2026-10-19').locations[0];
+  assert.deepEqual(group.records.map((r) => r.id), ['f1', 'f2', 'p2', 'p1']);
+  assert.deepEqual(S.mapPoints([at1('b', '2026-02-01'), at1('a', '2026-01-01')]).locations[0].records.map((r) => r.id), ['a', 'b']);
+});
+
+test('directionsUrl uses the address, or the coordinates when there is none', () => {
+  const group = S.mapPoints(mapData).locations.find((l) => l.name === 'Mill Valley CC');
+  assert.equal(S.directionsUrl(group), 'https://www.google.com/maps/dir/?api=1&destination=180%20Camino%20Alto%2C%20Mill%20Valley%2C%20CA%2094941');
+  const bare = S.mapPoints([rec({ id: 'x', location: 'Park', place: { kind: 'physical', geo: { latitude: 37.9, longitude: -122.5 } } })]).locations[0];
+  assert.equal(S.directionsUrl(bare), 'https://www.google.com/maps/dir/?api=1&destination=37.9%2C-122.5');
+});
+
+test('buildPlaceBlock has the place, its address, the count, and every engagement', () => {
+  const group = S.mapPoints(mapData).locations.find((l) => l.name === 'Mill Valley CC');
+  const block = S.buildPlaceBlock(group);
+  assert.match(block.text, /^Mill Valley CC\n180 Camino Alto\nMill Valley, CA 94941\n\(2 engagements\)\n\nTown Hall/);
+  assert.match(block.text, /Workshop/);
+  assert.match(block.html, /<b>Mill Valley CC<\/b><br>180 Camino Alto<br>Mill Valley, CA 94941<br>\(2 engagements\)/);
 });

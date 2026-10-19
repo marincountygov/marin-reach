@@ -642,3 +642,171 @@
     color: #101418;
   }
 }
+
+/* Map view. The pin uses the Marin blue token; every pin looks the same, and meaning is never carried by color. */
+.reach-map {
+  height: clamp(18rem, 60vw, 32rem);
+  width: 100%;
+  border: 1px solid var(--app-border);
+  border-radius: var(--pico-border-radius);
+  background: var(--app-bg-soft);
+}
+
+.reach-pin svg {
+  width: 36px;
+  height: 36px;
+  fill: var(--marin-blue);
+  stroke: #ffffff;
+  stroke-width: 1.5;
+  stroke-linejoin: round;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.6));
+}
+
+.reach-pin svg circle {
+  fill: #ffffff;
+  stroke: none;
+}
+
+.reach-pin.is-selected svg {
+  width: 44px;
+  height: 44px;
+  margin: -4px 0 0 -4px;
+}
+
+.leaflet-marker-icon.reach-pin:focus-visible {
+  /* The tiles are always light, so the ring is black with a white edge in both color schemes. */
+  outline: 3px solid #000000;
+  outline-offset: 2px;
+  box-shadow: 0 0 0 2px #ffffff;
+  border-radius: 50%;
+}
+
+.reach-map-selection {
+  margin-top: 1rem;
+}
+
+.reach-map-events {
+  list-style: none;
+  padding: 0;
+  margin: 1rem 0 0;
+}
+
+.reach-map-events > li {
+  list-style: none;
+  margin-bottom: 1rem;
+}
+
+/* Pico styles every [role="button"] as a filled button; Leaflet's markers and zoom controls need to stay plain. */
+.reach-map .leaflet-marker-icon[role="button"] {
+  background: none;
+  border: 0;
+  box-shadow: none;
+  padding: 0;
+  margin-right: 0;
+  margin-bottom: 0;
+  color: inherit;
+}
+
+.reach-map .leaflet-bar a[role="button"] {
+  display: block;
+  width: 30px;
+  height: 30px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-bottom: 1px solid #ccc;
+  border-radius: 0;
+  background: #ffffff;
+  color: #000000;
+  line-height: 30px;
+  text-align: center;
+  box-shadow: none;
+}
+
+.reach-map .leaflet-bar a[role="button"]:hover,
+.reach-map .leaflet-bar a[role="button"]:focus {
+  background: #f4f4f4;
+}
+
+.reach-map .leaflet-bar a[role="button"]:focus-visible {
+  outline: 3px solid #000000;
+  outline-offset: -3px;
+}
+
+.reach-map .leaflet-bar a[role="button"]:last-child {
+  border-bottom: 0;
+}
+
+.reach-map .leaflet-bar a[role="button"]:focus-visible {
+  box-shadow: none;
+}
+
+/* The shell's Feedback button covers the map's corner. Same pattern as the shell uses over the footer: it is
+   hidden, but appears when it receives keyboard focus, so it stays reachable. */
+body[data-view="map"] .app-feedback:not(:focus) {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.reach-map-selection h3 {
+  margin-bottom: 0.25rem;
+}
+
+.reach-map-line {
+  margin: 0;
+}
+
+.reach-map-count {
+  margin: 1rem 0 0;
+}
+
+
+.reach-map-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.reach-map-actions > button,
+.reach-map-actions > a {
+  width: auto;
+  margin: 0;
+}
+
+.reach-map-places__list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  list-style: none;
+  padding: 0;
+  margin: 0.5rem 0 0;
+}
+
+.reach-map-places__list > li {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.reach-map-places__list button {
+  width: auto;
+  margin: 0;
+}
+
+.reach-map-places__list button[aria-pressed="true"] {
+  background: var(--app-accent);
+  border-color: var(--app-accent);
+  color: #ffffff;
+}
+
+@media (prefers-color-scheme: dark) {
+  .reach-map-places__list button[aria-pressed="true"] {
+    color: #101418;
+  }
+}
+
+.reach-map-places {
+  margin-top: 1.25rem;
+}

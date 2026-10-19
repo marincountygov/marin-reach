@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "source": "community-engagement-tracker.csv",
+  "source": "marin-reach-engagements.json",
   "records": [
     {
       "id": "eng-ee84124a5f",
@@ -19,6 +19,20 @@
       "endTime": null,
       "location": "Homestead Valley Community Center",
       "status": "Completed",
+      "place": {
+        "kind": "physical",
+        "address": {
+          "streetAddress": "315 Montford Ave",
+          "locality": "Mill Valley",
+          "region": "CA",
+          "postalCode": "94941",
+          "country": "US"
+        },
+        "geo": {
+          "latitude": 37.8969812,
+          "longitude": -122.5441918
+        }
+      },
       "raw": {
         "agencies": [
           "CDA"
@@ -26,7 +40,7 @@
       }
     },
     {
-      "id": "eng-32eb5bb251",
+      "id": "eng-701be8fce1",
       "project": "Tam Junction Placemaking",
       "owner": "Jen I",
       "agencies": [
@@ -37,13 +51,27 @@
       ],
       "geographicAreas": [],
       "audience": "Stakeholder",
-      "eventName": null,
+      "eventName": "Tam Junction Placemaking stakeholder meeting",
       "type": "Meeting",
       "date": "2026-04-15",
       "startTime": "19:00",
       "endTime": null,
       "location": "Tam Valley Community Center",
       "status": "Completed",
+      "place": {
+        "kind": "physical",
+        "address": {
+          "streetAddress": "203 Marin Ave",
+          "locality": "Mill Valley",
+          "region": "CA",
+          "postalCode": "94941",
+          "country": "US"
+        },
+        "geo": {
+          "latitude": 37.8761584,
+          "longitude": -122.5267113
+        }
+      },
       "raw": {
         "agencies": [
           "CDA"
@@ -67,6 +95,20 @@
       "endTime": null,
       "location": "Mill Valley Community Center",
       "status": "Completed",
+      "place": {
+        "kind": "physical",
+        "address": {
+          "streetAddress": "180 Camino Alto",
+          "locality": "Mill Valley",
+          "region": "CA",
+          "postalCode": "94941",
+          "country": "US"
+        },
+        "geo": {
+          "latitude": 37.898796,
+          "longitude": -122.528346
+        }
+      },
       "raw": {
         "agencies": [
           "CDA"
@@ -90,6 +132,9 @@
       "endTime": null,
       "location": "Virtual",
       "status": "Completed",
+      "place": {
+        "kind": "virtual"
+      },
       "raw": {
         "agencies": [
           "CDA"
@@ -247,7 +292,7 @@
       }
     },
     {
-      "id": "eng-703cbd4bdd",
+      "id": "eng-f7c4c2e3c1",
       "project": "Envision Marin",
       "owner": "Linn W",
       "agencies": [
@@ -263,8 +308,22 @@
       "date": "2026-10-15",
       "startTime": "18:00",
       "endTime": null,
-      "location": null,
+      "location": "Tam Valley Community Center",
       "status": "Planned",
+      "place": {
+        "kind": "physical",
+        "address": {
+          "streetAddress": "203 Marin Ave",
+          "locality": "Mill Valley",
+          "region": "CA",
+          "postalCode": "94941",
+          "country": "US"
+        },
+        "geo": {
+          "latitude": 37.8761584,
+          "longitude": -122.5267113
+        }
+      },
       "raw": {
         "agencies": [
           "OCE"
@@ -293,6 +352,20 @@
       "endTime": null,
       "location": "Mill Valley Community Center",
       "status": "Planned",
+      "place": {
+        "kind": "physical",
+        "address": {
+          "streetAddress": "180 Camino Alto",
+          "locality": "Mill Valley",
+          "region": "CA",
+          "postalCode": "94941",
+          "country": "US"
+        },
+        "geo": {
+          "latitude": 37.898796,
+          "longitude": -122.528346
+        }
+      },
       "raw": {
         "agencies": [
           "OCE"
@@ -326,7 +399,7 @@
       }
     },
     {
-      "id": "eng-02795dc8e3",
+      "id": "eng-46364b8ee3",
       "project": "Envision Marin",
       "owner": "Linn W",
       "agencies": [
@@ -337,13 +410,27 @@
         "Ross"
       ],
       "audience": "General Public",
-      "eventName": null,
+      "eventName": "Envision Marin workshop — Ross",
       "type": "Workshop",
       "date": "2026-11-12",
       "startTime": "18:00",
       "endTime": "19:30",
       "location": "Marin Art & Garden Center",
       "status": "Planned",
+      "place": {
+        "kind": "physical",
+        "address": {
+          "streetAddress": "30 Sir Francis Drake Blvd",
+          "locality": "Ross",
+          "region": "CA",
+          "postalCode": "94957",
+          "country": "US"
+        },
+        "geo": {
+          "latitude": 37.963467,
+          "longitude": -122.55568
+        }
+      },
       "raw": {
         "agencies": [
           "OCE"
@@ -351,7 +438,7 @@
       }
     },
     {
-      "id": "eng-f9a1753a74",
+      "id": "eng-77495809e0",
       "project": "Envision Marin",
       "owner": "Linn W",
       "agencies": [
@@ -362,13 +449,27 @@
         "San Rafael"
       ],
       "audience": "General Public",
-      "eventName": null,
+      "eventName": "Envision Marin workshop — San Rafael (morning)",
       "type": "Workshop",
       "date": "2026-11-14",
       "startTime": "10:00",
       "endTime": "11:30",
       "location": "Marin County Civic Center",
       "status": "Planned",
+      "place": {
+        "kind": "physical",
+        "address": {
+          "streetAddress": "3501 Civic Center Dr",
+          "locality": "San Rafael",
+          "region": "CA",
+          "postalCode": "94903",
+          "country": "US"
+        },
+        "geo": {
+          "latitude": 37.997514,
+          "longitude": -122.530353
+        }
+      },
       "raw": {
         "agencies": [
           "OCE"
@@ -376,7 +477,7 @@
       }
     },
     {
-      "id": "eng-22f30aa535",
+      "id": "eng-d8e69d65a9",
       "project": "Envision Marin",
       "owner": "Linn W",
       "agencies": [
@@ -387,13 +488,27 @@
         "San Rafael"
       ],
       "audience": "General Public",
-      "eventName": null,
+      "eventName": "Envision Marin workshop — San Rafael (afternoon)",
       "type": "Workshop",
       "date": "2026-11-14",
       "startTime": "13:30",
       "endTime": "15:00",
       "location": "Marin Health & Wellness Campus Connection Center",
       "status": "Planned",
+      "place": {
+        "kind": "physical",
+        "address": {
+          "streetAddress": "3240 Kerner Blvd",
+          "locality": "San Rafael",
+          "region": "CA",
+          "postalCode": "94901",
+          "country": "US"
+        },
+        "geo": {
+          "latitude": 37.960206,
+          "longitude": -122.501874
+        }
+      },
       "raw": {
         "agencies": [
           "OCE"
@@ -401,7 +516,7 @@
       }
     },
     {
-      "id": "eng-d18431eb87",
+      "id": "eng-50440202c2",
       "project": "Envision Marin",
       "owner": "Linn W",
       "agencies": [
@@ -412,13 +527,27 @@
         "Novato"
       ],
       "audience": "General Public",
-      "eventName": null,
+      "eventName": "Envision Marin workshop — Novato",
       "type": "Workshop",
       "date": "2026-11-16",
       "startTime": "18:00",
       "endTime": "19:30",
       "location": "Marin Humane",
       "status": "Planned",
+      "place": {
+        "kind": "physical",
+        "address": {
+          "streetAddress": "171 Bel Marin Keys Blvd",
+          "locality": "Novato",
+          "region": "CA",
+          "postalCode": "94949",
+          "country": "US"
+        },
+        "geo": {
+          "latitude": 38.06810087685585,
+          "longitude": -122.53657216568276
+        }
+      },
       "raw": {
         "agencies": [
           "OCE"
@@ -426,7 +555,7 @@
       }
     },
     {
-      "id": "eng-a5e523b070",
+      "id": "eng-5a7ef4be70",
       "project": "Envision Marin",
       "owner": "Linn W",
       "agencies": [
@@ -437,13 +566,27 @@
         "Mill Valley"
       ],
       "audience": "General Public",
-      "eventName": null,
+      "eventName": "Envision Marin workshop — Mill Valley",
       "type": "Workshop",
       "date": "2026-11-19",
       "startTime": "18:00",
       "endTime": "19:30",
       "location": "Mill Valley Community Center",
       "status": "Planned",
+      "place": {
+        "kind": "physical",
+        "address": {
+          "streetAddress": "180 Camino Alto",
+          "locality": "Mill Valley",
+          "region": "CA",
+          "postalCode": "94941",
+          "country": "US"
+        },
+        "geo": {
+          "latitude": 37.898796,
+          "longitude": -122.528346
+        }
+      },
       "raw": {
         "agencies": [
           "OCE"
