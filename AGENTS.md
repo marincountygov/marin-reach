@@ -18,7 +18,7 @@ Built from `marin-app-template` with the Marin App Shell vendored in `vendor/mar
 - No "view" in UI button/link text.
 - The primary page has no intro paragraph and no visible page heading; explanation belongs in About. No help text under the search box.
 - Follow marin-mentions for the browsing UI: `mm-tab` tablist (List, Calendar, Map, Stats), a "Showing: ... (N engagements — ...)" line instead of filter chips, Reset under search, a Copy / Link / CSV / RSS button row on the list, Copy / All PNG / Link on Stats, a per-chart PNG button, and a checkbox per listing with Select all. Charts are Chart.js canvases in `app-card`s using marin-mentions' blue (`#0777cf`).
-- Sidebar order: search and Reset, Date, then collapsed `details.mm-facet-group` dropdowns (as the monitors in marin-mentions): Audience, Type, Project, Agency/Department, Partner, Status, Location, Owner. "Location" is the filter name for the Geographic Area field; listings still label that field "Geographic area" because they also show the venue as "Location".
+- The filter panel hides behind an icon-only white Filters button at the top of the left column, at every width (`[data-filter-toggle]`, `panel-right-open` and `panel-left-open` icons, no visible text). Sidebar order: search and Reset, Date, then collapsed `details.mm-facet-group` dropdowns (as the monitors in marin-mentions): Audience, Type, Project, Agency/Department, Partner, Status, Location, Owner. "Location" is the filter name for the Geographic Area field; listings still label that field "Geographic area" because they also show the venue as "Location".
 
 ## Before finishing
 

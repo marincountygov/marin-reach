@@ -19,7 +19,7 @@
   align-items: start;
 }
 
-.search-sidebar {
+.search-side {
   position: sticky;
   top: 1rem;
   align-self: start;
@@ -502,10 +502,56 @@
   color: var(--app-text);
 }
 
+/* The Filters button: icon only, white, at the top of the left column. */
 .reach-filter-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  margin: 0 0 1rem;
+  padding: 0;
+  border: 1px solid var(--app-border);
+  border-radius: var(--pico-border-radius);
+  background: var(--app-surface);
+  color: var(--app-muted);
+  cursor: pointer;
+}
+
+/* Same border, colors and hover as the card's Copy, Show on map and directions buttons. */
+.reach-filter-toggle:hover {
+  border-color: var(--app-accent);
+  background: color-mix(in srgb, var(--app-accent) 8%, var(--app-surface));
+}
+
+.reach-filter-toggle svg {
+  width: 1.25rem;
+  height: 1.25rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* Open on a wide screen: the button sits at the right edge of the filters column, next to the results. */
+.search-layout[data-filters="open"] .reach-filter-toggle {
+  margin-left: auto;
+}
+
+.reach-filters-icon-open[hidden],
+.reach-filters-icon-closed[hidden] {
   display: none;
-  width: auto;
-  margin-bottom: 1rem;
+}
+
+/* Collapsing the filters at any width: the results take the whole row. */
+.search-sidebar[data-open="false"] {
+  display: none;
+}
+
+.search-layout[data-filters="closed"] {
+  grid-template-columns: auto minmax(0, 1fr);
+  column-gap: 1rem;
 }
 
 /* Pico makes <dialog> a full-screen flex overlay; the panel holds the card with Close below it. */
@@ -567,21 +613,23 @@
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .reach-filter-toggle {
-    display: inline-block;
+  .search-side {
+    position: static;
+  }
+
+  .search-layout[data-filters="open"] .reach-filter-toggle {
+    margin-left: 0;
+  }
+
+  .search-layout[data-filters="closed"] {
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .search-sidebar {
-    position: static;
-    order: -1;
     padding: 1rem;
     border: 1px solid var(--app-border);
     border-radius: var(--pico-border-radius);
     background: var(--app-surface);
-  }
-
-  .search-sidebar[data-open="false"] {
-    display: none;
   }
 
   /* A month grid is not practical this narrow: use the agenda instead. */
