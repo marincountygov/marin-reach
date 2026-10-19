@@ -23,3 +23,9 @@ Add notices for app-specific dependencies here when building the actual workflow
 - Chart.js 4.5.1, MIT License
 
 The vendored bundle `vendor/chart.min.js` renders the Stats charts. Keep `vendor/CHART_LICENSE.md` with it. It is the same reviewed bundle used by marin-mentions; do not load it from a CDN.
+
+## Leaflet
+
+- Leaflet 1.9.4, BSD 2-Clause License (`vendor/leaflet/LICENSE`)
+
+The vendored `vendor/leaflet/leaflet.js` and `leaflet.css` render the Map view. Do not load them from a CDN. Only the files the app uses are kept; the layer-control and default-marker images are not vendored because the app uses neither.

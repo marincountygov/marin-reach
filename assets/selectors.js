@@ -1,4 +1,4 @@
-// Pure data selectors shared by the List, Calendar, and Stats views.
+// Pure data selectors shared by the List, Calendar, Map, and Stats views.
 // No DOM access: the browser exposes this as window.ReachSelectors and Node
 // tests load it with require(). All views filter through applyFilters().
 (function (root, factory) {
@@ -20,7 +20,7 @@
     { key: 'area', param: 'area', label: 'Location', all: 'All locations', values: (r) => r.geographicAreas },
     { key: 'owner', param: 'owner', label: 'Owner', all: 'All owners', values: (r) => (r.owner ? [r.owner] : []) },
   ];
-  const VIEWS = ['list', 'calendar', 'stats'];
+  const VIEWS = ['list', 'calendar', 'map', 'stats'];
   const RANGES = ['day', 'week', 'month'];
   const SORTS = ['newest', 'oldest'];
   const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August',
@@ -31,10 +31,11 @@
   function emptyState() {
     const facets = {};
     FACETS.forEach((f) => { facets[f.key] = []; });
-    return { q: '', from: '', to: '', facets: facets, view: 'list', range: 'month', sort: 'newest' };
+    return { q: '', from: '', to: '', facets: facets, view: 'list', range: 'month', sort: 'newest', place: '' };
   }
 
   const ISO = /^\d{4}-\d{2}-\d{2}$/;
+  const PLACE_KEY = /^-?\d{1,3}(\.\d+)?,-?\d{1,3}(\.\d+)?$/;
 
   function parseQuery(search) {
     const params = new URLSearchParams(search);
@@ -50,6 +51,9 @@
     const range = params.get('range');
     state.range = RANGES.indexOf(range) >= 0 ? range : 'month';
     state.sort = params.get('sort') === 'oldest' ? 'oldest' : 'newest';
+    // The selected map location is its coordinates, "latitude,longitude".
+    const place = params.get('place') || '';
+    state.place = PLACE_KEY.test(place) ? place : '';
     return state;
   }
 
@@ -58,6 +62,7 @@
     if (state.view && state.view !== 'list') params.set('view', state.view);
     if (state.range && state.range !== 'month') params.set('range', state.range);
     if (state.sort && state.sort !== 'newest') params.set('sort', state.sort);
+    if (state.place && state.view === 'map') params.set('place', state.place);
     if (state.q) params.set('q', state.q);
     if (state.from) params.set('from', state.from);
     if (state.to) params.set('to', state.to);
@@ -328,6 +333,97 @@
     return text.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
   }
 
+  // --- map ---
+
+  // Two address lines for display: street, then "Locality, Region Postal". Empty when there is no address.
+  function formatAddress(place) {
+    const a = (place && place.address) || {};
+    const cityLine = [[a.locality, a.region].filter(Boolean).join(', '), a.postalCode].filter(Boolean).join(' ');
+    return [a.streetAddress, cityLine].filter(Boolean);
+  }
+
+  // The key that groups records at the same coordinates, or '' when a record has none.
+  function placeKey(record) {
+    const geo = record.place && record.place.geo;
+    return geo ? geo.latitude + ',' + geo.longitude : '';
+  }
+
+  // Splits already-filtered records into map locations and records that cannot be placed. Records at exactly the
+  // same coordinates share one location. Coordinates are only ever read from the data, never derived.
+  // Reasons: 'virtual', 'no-coordinates' (a physical place without geo), 'no-location'.
+  // `today` (YYYY-MM-DD) puts upcoming engagements first, soonest first, then past ones, latest first.
+  function mapPoints(records, today) {
+    const byKey = new Map();
+    const unmapped = [];
+    records.forEach((r) => {
+      const place = r.place;
+      if (place && place.geo) {
+        const key = placeKey(r);
+        if (!byKey.has(key)) {
+          byKey.set(key, { key: key, name: r.location || label(r), latitude: place.geo.latitude,
+            longitude: place.geo.longitude, address: formatAddress(place), records: [] });
+        }
+        byKey.get(key).records.push(r);
+      } else {
+        unmapped.push({ record: r, reason: !place ? 'no-location' : place.kind === 'virtual' ? 'virtual' : 'no-coordinates' });
+      }
+    });
+    const locations = Array.from(byKey.values()).sort((a, b) => a.name.localeCompare(b.name) || a.key.localeCompare(b.key));
+    locations.forEach((g) => {
+      const oldestFirst = sortByDate(g.records, 'oldest');
+      if (!today) { g.records = oldestFirst; return; }
+      g.records = oldestFirst.filter((r) => r.date >= today).concat(sortByDate(g.records.filter((r) => r.date < today), 'newest'));
+    });
+    return { locations: locations, unmapped: unmapped };
+  }
+
+  // The status line above the map. Counts come from the filtered records handed in.
+  function mapSummary(records) {
+    const points = mapPoints(records);
+    const mapped = records.length - points.unmapped.length;
+    const count = (reason) => points.unmapped.filter((u) => u.reason === reason).length;
+    const virtual = count('virtual');
+    const noCoordinates = count('no-coordinates');
+    const noLocation = count('no-location');
+    const parts = [];
+    if (virtual) parts.push(virtual + ' virtual');
+    if (noCoordinates) parts.push(noCoordinates + ' without coordinates');
+    if (noLocation) parts.push(noLocation + ' without a location');
+    const lines = [mapped + ' of ' + plural(records.length, 'engagement') + ' shown on map.'];
+    if (points.unmapped.length) {
+      lines.push(plural(points.unmapped.length, 'engagement') + ' ' + (points.unmapped.length === 1 ? 'does' : 'do') +
+        ' not have a map location (' + parts.join(', ') + ').');
+    }
+    return { mapped: mapped, total: records.length, virtual: virtual, noCoordinates: noCoordinates,
+      noLocation: noLocation, locations: points.locations.length, text: lines.join(' ') };
+  }
+
+  // Google Maps directions to a location: its address when it has one, otherwise its coordinates.
+  function directionsUrl(group) {
+    const destination = group.address.length ? group.address.join(', ') : group.latitude + ',' + group.longitude;
+    return 'https://www.google.com/maps/dir/?api=1&destination=' + encodeURIComponent(destination);
+  }
+
+  // One map location with all of its engagements, as plain text and HTML, for the location's Copy button.
+  function buildPlaceBlock(group) {
+    const blocks = group.records.map(buildItemBlock);
+    const head = [group.name].concat(group.address, ['(' + plural(group.records.length, 'engagement') + ')']);
+    return {
+      text: head.join('\n') + '\n\n' + blocks.map((b) => b.text).join('\n\n'),
+      html: '<div><b>' + escapeHtml(group.name) + '</b>' + group.address.map((l) => '<br>' + escapeHtml(l)).join('') +
+        '<br>(' + escapeHtml(plural(group.records.length, 'engagement')) + ')<br><br>' + blocks.map((b) => b.html).join('<br><br>') + '</div>',
+    };
+  }
+
+  // Accessible name for a marker: event and place for one engagement, place and count for several.
+  function markerLabel(group) {
+    if (group.records.length === 1) {
+      const r = group.records[0];
+      return label(r) + ' at ' + group.name;
+    }
+    return group.name + ' \u2014 ' + plural(group.records.length, 'engagement');
+  }
+
   // --- export ---
 
   function csvField(value) {
@@ -391,6 +487,6 @@
     FACETS, VIEWS, RANGES, addDays, weekStart, weekDays, rangeBounds, shiftAnchor, calendarTitle, emptyState, parseQuery, serializeState, activeFilterCount, applyFilters,
     facetOptions, sortRecords, sortNewestFirst, sortByDate, SORTS, label, groupByDate, monthGrid, monthKey, shiftMonth, initialMonth,
     computeStats, formatTime, formatTimeRange, toISO, parseISO, formatDate, monthTitle, plural,
-    statusCounts, describeFilters, slugify, toCsv, detailPairs, buildItemBlock, buildDigest, csvField,
+    statusCounts, describeFilters, slugify, formatAddress, placeKey, mapPoints, mapSummary, directionsUrl, buildPlaceBlock, markerLabel, toCsv, detailPairs, buildItemBlock, buildDigest, csvField,
   };
 });

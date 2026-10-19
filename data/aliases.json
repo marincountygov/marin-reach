@@ -1,5 +1,5 @@
 {
-  "$comment": "Display-name aliases applied during CSV import. Keys are matched after trimming whitespace, case-insensitively. Unlisted values pass through unchanged. Add entries here, not in application code.",
+  "$comment": "Display-name aliases applied during import. Keys are matched after trimming whitespace, case-insensitively. Unlisted values pass through unchanged. Add entries here, not in application code.",
   "agencies": {
     "CDA": "Community Development Agency",
     "OCE": "Office of the County Executive",
