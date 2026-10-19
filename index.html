@@ -14,9 +14,11 @@
     <link rel="stylesheet" href="vendor/marinos/marinos.css">
     <link rel="stylesheet" href="assets/app.css">
     <link rel="stylesheet" href="vendor/leaflet/leaflet.css">
+    <link rel="stylesheet" href="vendor/leaflet-markercluster/MarkerCluster.css">
     <script src="vendor/marinos/marinos.js" defer></script>
     <script src="vendor/chart.min.js" defer></script>
     <script src="vendor/leaflet/leaflet.js" defer></script>
+    <script src="vendor/leaflet-markercluster/leaflet.markercluster.js" defer></script>
     <script src="assets/selectors.js" defer></script>
     <script src="assets/app.js" defer></script>
   </head>
@@ -106,9 +108,11 @@
               </div>
               <p class="app-help-text" id="action-status" role="status"></p>
 
+              <div id="copy-fallback-home">
               <div class="mm-copy-fallback" id="copy-fallback" hidden>
                 <label for="copy-fallback-text">Couldn't copy automatically &mdash; select the text below and copy it manually (Ctrl/Cmd+C)</label>
                 <textarea id="copy-fallback-text" readonly rows="8"></textarea>
+              </div>
               </div>
 
               <div id="no-results" class="app-alert app-alert--warning" hidden>
@@ -165,9 +169,12 @@
                 <div id="map-empty" class="app-alert app-alert--warning" hidden>
                   <p><strong id="map-empty-text">No mapped engagements match these filters.</strong> <button type="button" class="secondary" id="map-go-list">Go to List</button></p>
                 </div>
+                <div id="map-stage-home">
+                <div id="map-stage">
                 <div id="map" class="reach-map"></div>
                 <div class="reach-map-actions">
                   <button type="button" class="secondary mm-copy-button" id="map-reset"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m16.24 7.76-1.804 5.411a2 2 0 0 1-1.265 1.265L7.76 16.24l1.804-5.411a2 2 0 0 1 1.265-1.265z"/><circle cx="12" cy="12" r="10"/></svg>Re-center</button>
+                  <button type="button" class="secondary mm-copy-button" id="map-fullwindow" aria-haspopup="dialog"><svg class="reach-fw-enter" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><rect width="10" height="8" x="7" y="8" rx="1"/></svg><svg class="reach-fw-exit" viewBox="0 0 24 24" aria-hidden="true" hidden><path d="M8 3v3a2 2 0 0 1-2 2H3"/><path d="M21 8h-3a2 2 0 0 1-2-2V3"/><path d="M3 16h3a2 2 0 0 1 2 2v3"/><path d="M16 21v-3a2 2 0 0 1 2-2h3"/></svg><span id="map-fullwindow-text">Full window</span></button>
                   <button type="button" class="secondary mm-copy-button" id="map-clear" aria-label="Clear selected location" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/></svg>Clear</button>
                 </div>
                 <section class="reach-map-places" id="map-places-section" aria-labelledby="map-places-title">
@@ -178,6 +185,8 @@
                   <h3 id="map-selection-title" tabindex="-1"></h3>
                   <div id="map-selection-body"></div>
                 </section>
+                </div>
+                </div>
               </div>
 
               <div id="panel-stats" role="tabpanel" aria-labelledby="tab-stats" hidden>
@@ -206,6 +215,13 @@
             </div>
           </form>
         </div>
+
+        <dialog id="map-dialog" class="reach-map-dialog" aria-labelledby="map-dialog-title">
+          <div class="reach-map-dialog__panel">
+            <h2 id="map-dialog-title">Map of engagements</h2>
+            <div id="map-dialog-host"></div>
+          </div>
+        </dialog>
 
         <dialog id="record-dialog" class="reach-dialog">
           <div class="reach-dialog__panel">

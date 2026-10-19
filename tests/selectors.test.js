@@ -341,3 +341,8 @@ test('buildPlaceBlock has the place, its address, the count, and every engagemen
   assert.match(block.text, /Workshop/);
   assert.match(block.html, /<b>Mill Valley CC<\/b><br>180 Camino Alto<br>Mill Valley, CA 94941<br>\(2 engagements\)/);
 });
+
+test('clusters are named by what they hold', () => {
+  assert.equal(S.clusterLabel(3, 7), '3 locations, 7 engagements. Press Enter to zoom in.');
+  assert.equal(S.clusterLabel(1, 1), '1 location, 1 engagement. Press Enter to zoom in.');
+});

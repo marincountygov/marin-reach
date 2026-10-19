@@ -415,6 +415,11 @@
     };
   }
 
+  // Accessible name for a cluster of map markers.
+  function clusterLabel(locationCount, engagementCount) {
+    return plural(locationCount, 'location') + ', ' + plural(engagementCount, 'engagement') + '. Press Enter to zoom in.';
+  }
+
   // Accessible name for a marker: event and place for one engagement, place and count for several.
   function markerLabel(group) {
     if (group.records.length === 1) {
@@ -487,6 +492,6 @@
     FACETS, VIEWS, RANGES, addDays, weekStart, weekDays, rangeBounds, shiftAnchor, calendarTitle, emptyState, parseQuery, serializeState, activeFilterCount, applyFilters,
     facetOptions, sortRecords, sortNewestFirst, sortByDate, SORTS, label, groupByDate, monthGrid, monthKey, shiftMonth, initialMonth,
     computeStats, formatTime, formatTimeRange, toISO, parseISO, formatDate, monthTitle, plural,
-    statusCounts, describeFilters, slugify, formatAddress, placeKey, mapPoints, mapSummary, directionsUrl, buildPlaceBlock, markerLabel, toCsv, detailPairs, buildItemBlock, buildDigest, csvField,
+    statusCounts, describeFilters, slugify, formatAddress, placeKey, mapPoints, mapSummary, clusterLabel, directionsUrl, buildPlaceBlock, markerLabel, toCsv, detailPairs, buildItemBlock, buildDigest, csvField,
   };
 });

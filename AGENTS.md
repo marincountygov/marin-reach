@@ -10,7 +10,7 @@ Built from `marin-app-template` with the Marin App Shell vendored in `vendor/mar
 
 - All views must derive from `applyFilters()` in `assets/selectors.js`. Never add a second filtering or counting path.
 - Aliases and display names are data (`data/aliases.json`), never UI conditionals. Never silently merge uncertain values; they go to `data/ambiguities.md`.
-- Do not add fields, metadata features, notes, a database, authentication, AI, or new runtime dependencies without explicit approval. The approved map work covers Leaflet, one tile host (USGS National Map) and the `place` field only. Open items live in `docs/decisions.md`.
+- Do not add fields, metadata features, notes, a database, authentication, AI, or new runtime dependencies without explicit approval. The approved map work covers Leaflet, Leaflet.markercluster, one tile host (OpenStreetMap) and the `place` field only. Open items live in `docs/decisions.md`.
 - Multi-value fields split on `;` only, because commas appear inside names.
 - Status values are `Planned`, `Canceled`, `Completed`, shown as entered (a past Planned date is not flagged).
 - Keep the CSP static. After a reviewed `security.json` change, run `python3 scripts/sync-security-meta.py --write`. No inline scripts or `style` attributes; set styles through the CSSOM in JS.

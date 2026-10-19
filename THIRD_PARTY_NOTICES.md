@@ -29,3 +29,9 @@ The vendored bundle `vendor/chart.min.js` renders the Stats charts. Keep `vendor
 - Leaflet 1.9.4, BSD 2-Clause License (`vendor/leaflet/LICENSE`)
 
 The vendored `vendor/leaflet/leaflet.js` and `leaflet.css` render the Map view. Do not load them from a CDN. Only the files the app uses are kept; the layer-control and default-marker images are not vendored because the app uses neither.
+
+## Leaflet.markercluster
+
+- Leaflet.markercluster 1.5.3, MIT License (`vendor/leaflet-markercluster/LICENSE`)
+
+The vendored `vendor/leaflet-markercluster/leaflet.markercluster.js` and `MarkerCluster.css` group nearby map markers once there are enough locations. The plugin's default colored cluster styles are not used. Do not load it from a CDN.

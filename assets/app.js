@@ -414,6 +414,8 @@
   }
 
   function showCopyFallback(text) {
+    // The manual-copy box is on the page, which is inert behind the full window dialog, so it moves in while that is open.
+    if ($('map-dialog').open) $('map-dialog-host').append($('copy-fallback'));
     $('copy-fallback-text').value = text;
     $('copy-fallback').hidden = false;
     $('copy-fallback-text').focus();
@@ -577,9 +579,30 @@
     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
     maxZoom: 19,
   };
+  const CLUSTER_RADIUS = 45; // pixels
   const PIN_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">' +
     '<path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/>' +
     '<circle cx="12" cy="10" r="3"/></svg>';
+
+  // The icon for a group of nearby markers: the number of engagements as text, named by what it holds.
+  // Every cluster looks the same; nothing is shown only on hover.
+  function clusterIcon(cluster) {
+    const groups = cluster.getAllChildMarkers().map((m) => app.markers.get(m.reachKey).group);
+    const engagements = groups.reduce((n, g) => n + g.records.length, 0);
+    const id = String(L.stamp(cluster));
+    app.clusterById.set(id, cluster);
+    const label = document.createElement('span');
+    label.className = 'visually-hidden';
+    label.textContent = S.clusterLabel(groups.length, engagements);
+    const count = document.createElement('span');
+    count.className = 'reach-cluster__count';
+    count.dataset.cluster = id;
+    count.setAttribute('aria-hidden', 'true');
+    count.textContent = String(engagements);
+    const wrap = document.createElement('div');
+    wrap.append(count, label);
+    return L.divIcon({ className: 'reach-cluster', html: wrap.innerHTML, iconSize: [44, 44] });
+  }
 
   function ensureMap() {
     if (app.map) return app.map;
@@ -597,11 +620,40 @@
     map.getContainer().setAttribute('role', 'region');
     map.getContainer().setAttribute('aria-label', 'Map of engagement locations');
     map.fitBounds(MARIN_EXTENT);
-    // The zoom controls are links with role="button"; Space should work on them like it does on a button.
+
+    // Markers sit in a cluster layer: nearby markers group into one numbered cluster until the map is zoomed in.
+    app.clusterById = new Map();
+    app.clusterLayer = L.markerClusterGroup({
+      maxClusterRadius: CLUSTER_RADIUS, showCoverageOnHover: false, spiderfyOnMaxZoom: false, zoomToBoundsOnClick: true,
+      animate: !still, animateAddingMarkers: false, iconCreateFunction: clusterIcon,
+    }).addTo(map);
+
+    // Leaflet only turns Enter into a click for popups, and the zoom controls are links, so Enter and Space are
+    // handled here for markers (role="button"), clusters, and the zoom controls. The marker and cluster elements
+    // are recreated as the map moves, so this listens on the container instead of on each element.
     map.getContainer().addEventListener('keydown', (e) => {
-      if (e.key === ' ' && e.target.closest && e.target.closest('.leaflet-control-zoom a')) {
+      const target = e.target.closest ? e.target : null;
+      if (!target) return;
+      if (e.key === ' ' && target.closest('.leaflet-control-zoom a')) {
         e.preventDefault();
-        e.target.click();
+        target.click();
+        return;
+      }
+      if (e.key !== 'Enter' && e.key !== ' ') return;
+      const pin = target.closest('.reach-pin');
+      const cluster = target.closest('.reach-cluster');
+      if (pin && pin.dataset.place) {
+        e.preventDefault();
+        e.stopPropagation();
+        selectLocation(pin.dataset.place, true, false);
+      } else if (cluster) {
+        e.preventDefault();
+        e.stopPropagation();
+        const owner = app.clusterById.get((cluster.querySelector('[data-cluster]') || {}).dataset?.cluster);
+        if (!owner) return;
+        // The cluster element goes away when it splits, so focus moves to the map instead of being lost.
+        map.once('moveend', () => map.getContainer().focus({ preventScroll: true }));
+        owner.zoomToBounds({ padding: [48, 48] });
       }
     });
     app.map = map;
@@ -611,6 +663,31 @@
   function markerElement(key) {
     const entry = app.markers.get(key);
     return entry && entry.marker.getElement();
+  }
+
+  // Where focus goes back to: the marker, or the map itself when the marker is inside a cluster.
+  function focusMarkerOrMap(key) {
+    const el = (key && markerElement(key)) || (app.map && app.map.getContainer());
+    if (el) el.focus();
+  }
+
+  // A marker inside a cluster has no element until the map is zoomed in far enough to show it.
+  function revealMarker(key, done) {
+    const entry = app.markers.get(key);
+    if (!entry.marker.getElement()) app.clusterLayer.zoomToShowLayer(entry.marker, done);
+    else done();
+  }
+
+  // The name, key and selected state live on the element, which Leaflet creates again each time a marker is added.
+  function decorateMarker(key) {
+    const entry = app.markers.get(key);
+    const el = entry && entry.marker.getElement();
+    if (!el) return;
+    const name = S.markerLabel(entry.group);
+    el.setAttribute('aria-label', name);
+    el.title = name;
+    el.dataset.place = key;
+    el.classList.toggle('is-selected', key === app.mapSelected);
   }
 
   // `focus` moves focus to the details (keyboard and screen-reader use); `pan` centers the map on the location.
@@ -626,10 +703,10 @@
     });
     renderSelection();
     syncPlaces();
-    if (pan && app.map) app.map.panTo([entry.group.latitude, entry.group.longitude]);
+    if (pan && app.map) revealMarker(key, () => app.map.panTo([entry.group.latitude, entry.group.longitude]));
     const title = $('map-selection-title');
     if (focus) title.focus();
-    else title.scrollIntoView({ block: 'nearest' });
+    else if (!$('map-dialog').open) title.scrollIntoView({ block: 'nearest' }); // the full window keeps the map in view
   }
 
   function clearSelection(returnFocus) {
@@ -643,8 +720,7 @@
     });
     renderSelection();
     syncPlaces();
-    const el = returnFocus && key && markerElement(key);
-    if (el) el.focus();
+    if (returnFocus && key) focusMarkerOrMap(key);
   }
 
   // The same places as the markers, as a text list: an alternative to the map itself.
@@ -698,15 +774,51 @@
     body.append(list);
   }
 
+  // The full window view: the map, its buttons, the locations list and the details move into a modal dialog that
+  // fills the browser window (this is not the browser's own fullscreen mode). Escape closes it and focus goes back.
+  function setFullWindow(open) {
+    const dialog = $('map-dialog');
+    const stage = $('map-stage');
+    if (open) {
+      $('map-dialog-host').append(stage);
+      dialog.showModal();
+      syncFullWindowButton(true);
+      if (app.map) app.map.invalidateSize();
+      $('map-fullwindow').focus();
+    } else if (dialog.open) {
+      dialog.close();
+    }
+  }
+
+  function syncFullWindowButton(open) {
+    const button = $('map-fullwindow');
+    button.querySelector('.reach-fw-enter').hidden = open;
+    button.querySelector('.reach-fw-exit').hidden = !open;
+    $('map-fullwindow-text').textContent = open ? 'Exit full window' : 'Full window';
+  }
+
   // Escape in the details goes back to the marker that opened them.
   function bindMapSelection() {
     $('map-selection').addEventListener('keydown', (e) => {
-      if (e.key !== 'Escape') return;
-      const el = markerElement(app.mapSelected);
-      if (el) { e.preventDefault(); el.focus(); }
+      if (e.key !== 'Escape' || !app.mapSelected) return;
+      e.preventDefault();
+      focusMarkerOrMap(app.mapSelected);
     });
     $('map-clear').addEventListener('click', () => clearSelection(true));
     $('map-reset').addEventListener('click', () => { if (app.map) fitMap(); });
+    const dialog = $('map-dialog');
+    if (typeof dialog.showModal !== 'function') {
+      $('map-fullwindow').hidden = true;
+      return;
+    }
+    $('map-fullwindow').addEventListener('click', () => setFullWindow(!dialog.open));
+    dialog.addEventListener('close', () => {
+      $('map-stage-home').append($('map-stage'));
+      $('copy-fallback-home').append($('copy-fallback'));
+      syncFullWindowButton(false);
+      if (app.map) app.map.invalidateSize();
+      $('map-fullwindow').focus();
+    });
   }
 
   function renderMap() {
@@ -721,6 +833,7 @@
     if (typeof L === 'undefined') {
       $('map').hidden = true;
       $('map-selection').hidden = true;
+      $('map-fullwindow').hidden = true;
       $('map-empty').hidden = false;
       $('map-empty-text').textContent = 'The map could not load. Every engagement is still available in List.';
       return;
@@ -730,43 +843,35 @@
 
     const keys = new Set(points.locations.map((g) => g.key));
     app.markers.forEach((entry, key) => {
-      if (!keys.has(key)) { entry.marker.remove(); app.markers.delete(key); }
+      if (!keys.has(key)) { app.clusterLayer.removeLayer(entry.marker); app.markers.delete(key); }
     });
     points.locations.forEach((group) => {
-      const name = S.markerLabel(group);
       let entry = app.markers.get(group.key);
       if (!entry) {
         const marker = L.marker([group.latitude, group.longitude], {
           icon: L.divIcon({ className: 'reach-pin', html: PIN_SVG, iconSize: [36, 36], iconAnchor: [18, 33] }),
-          title: name,
           keyboard: true,
-        }).addTo(map);
+        });
+        marker.reachKey = group.key;
         entry = { marker: marker, group: group };
         app.markers.set(group.key, entry);
-        // Leaflet only turns Enter into a click for popups, so the marker (role="button") handles Enter and
-        // Space itself. Keyboard activation moves focus to the details; a pointer click leaves focus alone.
         // A click with no pointer behind it (detail 0) comes from a screen reader or keyboard, so focus moves too.
         marker.on('click', (e) => selectLocation(group.key, !e.originalEvent || e.originalEvent.detail === 0, false));
-        marker.getElement().addEventListener('keydown', (e) => {
-          if (e.key !== 'Enter' && e.key !== ' ') return;
-          e.preventDefault();
-          e.stopPropagation();
-          selectLocation(group.key, true, false);
-        });
+        marker.on('add', () => decorateMarker(group.key));
+        app.clusterLayer.addLayer(marker);
       }
       entry.group = group;
-      const el = entry.marker.getElement();
-      el.setAttribute('aria-label', name);
-      el.title = name;
+      decorateMarker(group.key);
     });
 
     // The selected location lives in the URL state; drop it when the filters have removed that location.
     const wanted = app.state.place;
     app.mapSelected = wanted && app.markers.has(wanted) ? wanted : null;
     if (wanted && !app.mapSelected) { app.state.place = ''; writeUrl(); }
-    app.markers.forEach((entry, key) => entry.marker.getElement().classList.toggle('is-selected', key === app.mapSelected));
+    app.markers.forEach((entry, key) => decorateMarker(key));
     renderSelection();
     renderPlaces(points.locations);
+    app.clusterLayer.refreshClusters();
 
     // Refit only when the set of locations changes, so panning and zooming are not undone by a re-render.
     const signature = points.locations.map((g) => g.key).join('|');
