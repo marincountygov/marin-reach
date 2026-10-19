@@ -126,7 +126,43 @@
       if (badge) badge.textContent = st.facets[facet.key].length ? '(' + st.facets[facet.key].length + ' selected)' : '';
     });
     const n = S.activeFilterCount(st);
-    $('filter-toggle').textContent = n ? 'Filters (' + n + ' active)' : 'Filters';
+    // The button is icon-only, so the count lives in its name.
+    const name = n ? 'Filters, ' + n + ' active' : 'Filters';
+    $('filter-toggle').setAttribute('aria-label', name);
+    $('filter-toggle').title = name;
+  }
+
+  // --- filters panel ---
+
+  const FILTERS_PREF = 'reach.filters';
+
+  function isNarrow() { return window.matchMedia('(max-width: 850px)').matches; }
+
+  // A wide-screen choice is a layout preference kept in this browser only; it never changes what is filtered.
+  function savedFiltersPref() {
+    try { return window.localStorage.getItem(FILTERS_PREF); } catch (err) { return null; }
+  }
+
+  // Open on wide screens unless the person collapsed it; closed on narrow screens.
+  function filtersOpenByDefault() {
+    return !isNarrow() && savedFiltersPref() !== 'closed';
+  }
+
+  // Hiding the panel does not clear anything: the filters stay applied and the count stays in the button.
+  function setFilters(open, remember) {
+    $('filter-panel').dataset.open = String(open);
+    $('filters').dataset.filters = open ? 'open' : 'closed';
+    document.querySelectorAll('[data-filter-toggle]').forEach((button) => {
+      button.setAttribute('aria-expanded', String(open));
+      // SVG elements have no `hidden` property, so the attribute is toggled directly.
+      button.querySelector('.reach-filters-icon-open').toggleAttribute('hidden', !open);
+      button.querySelector('.reach-filters-icon-closed').toggleAttribute('hidden', open);
+    });
+    if (remember && !isNarrow()) {
+      try { window.localStorage.setItem(FILTERS_PREF, open ? 'open' : 'closed'); } catch (err) { /* the choice just is not remembered */ }
+    }
+    // The results change width, so the map has to measure itself again.
+    if (app.map) app.map.invalidateSize();
   }
 
   // --- records ---
@@ -818,8 +854,8 @@
 
   function syncFullWindowButton(open) {
     const button = $('map-fullwindow');
-    button.querySelector('.reach-fw-enter').hidden = open;
-    button.querySelector('.reach-fw-exit').hidden = !open;
+    button.querySelector('.reach-fw-enter').toggleAttribute('hidden', open);
+    button.querySelector('.reach-fw-exit').toggleAttribute('hidden', !open);
     $('map-fullwindow-text').textContent = open ? 'Exit full window' : 'Full window';
   }
 
@@ -1092,12 +1128,13 @@
       renderCalendar();
     });
 
-    $('filter-toggle').addEventListener('click', () => {
-      const panel = $('filter-panel');
-      const open = panel.dataset.open !== 'true';
-      panel.dataset.open = String(open);
-      $('filter-toggle').setAttribute('aria-expanded', String(open));
+    // The Filters button sits at the top of the left column (above the filters on narrow screens).
+    document.querySelectorAll('[data-filter-toggle]').forEach((button) => {
+      button.addEventListener('click', () => setFilters($('filter-panel').dataset.open !== 'true', true));
     });
+    const narrow = window.matchMedia('(max-width: 850px)');
+    (narrow.addEventListener ? narrow.addEventListener.bind(narrow, 'change') : narrow.addListener.bind(narrow))(() => setFilters(filtersOpenByDefault(), false));
+    setFilters(filtersOpenByDefault(), false);
     const scheme = window.matchMedia('(prefers-color-scheme: dark)');
     (scheme.addEventListener ? scheme.addEventListener.bind(scheme, 'change') : scheme.addListener.bind(scheme))(() => {
       app.themeApplied = false;
