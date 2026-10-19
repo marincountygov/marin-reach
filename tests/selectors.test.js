@@ -346,3 +346,12 @@ test('clusters are named by what they hold', () => {
   assert.equal(S.clusterLabel(3, 7), '3 locations, 7 engagements. Press Enter to zoom in.');
   assert.equal(S.clusterLabel(1, 1), '1 location, 1 engagement. Press Enter to zoom in.');
 });
+
+test('recordDirectionsUrl uses the address, falls back to coordinates, and is empty for virtual or unlocated records', () => {
+  assert.equal(S.recordDirectionsUrl(mapData[0]), 'https://www.google.com/maps/dir/?api=1&destination=180%20Camino%20Alto%2C%20Mill%20Valley%2C%20CA%2094941');
+  assert.equal(S.recordDirectionsUrl(rec({ place: { kind: 'physical', geo: { latitude: 37.9, longitude: -122.5 } } })), 'https://www.google.com/maps/dir/?api=1&destination=37.9%2C-122.5');
+  assert.equal(S.recordDirectionsUrl(rec({ place: { kind: 'physical', address: { streetAddress: '1 Main St' } } })), 'https://www.google.com/maps/dir/?api=1&destination=1%20Main%20St');
+  assert.equal(S.recordDirectionsUrl(mapData[3]), '');
+  assert.equal(S.recordDirectionsUrl(mapData[5]), '');
+  assert.equal(S.recordDirectionsUrl(mapData[4]), 'https://www.google.com/maps/dir/?api=1&destination=180%20Camino%20Alto%2C%20Mill%20Valley%2C%20CA%2094941');
+});

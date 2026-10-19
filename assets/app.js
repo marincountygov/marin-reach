@@ -135,10 +135,12 @@
     if (withCopy === undefined) withCopy = withCheckbox;
     // Listings and the details dialog link to the map; the cards on the map itself do not.
     if (withMapLink === undefined) withMapLink = true;
+    const placeActions = withMapLink; // Show on map and directions appear together on listings and in the dialog
     withMapLink = withMapLink && !!S.placeKey(r);
     const heading = S.label(r);
     // Per-listing controls are named with the date and time so repeated titles stay distinct.
     const named = heading + ', ' + S.formatDate(r.date) + (S.formatTimeRange(r) ? ', ' + S.formatTimeRange(r) : '');
+    const directions = placeActions ? directionsButton(S.recordDirectionsUrl(r), named) : null;
     const rows = [];
     S.detailPairs(r).forEach((pair) => {
       rows.push(h('dt', { text: pair[0] }));
@@ -154,9 +156,9 @@
       ]);
       const status = h('p', { class: 'app-help-text mm-card__copy-status', role: 'status' });
       copy.addEventListener('click', () => copyItem(r, copy, status));
-      parts.push(h('div', { class: 'mm-card__copy-actions' }, [copy, withMapLink ? mapButton(r, named) : null, status]));
-    } else if (withMapLink) {
-      parts.push(h('div', { class: 'mm-card__copy-actions' }, mapButton(r, named)));
+      parts.push(h('div', { class: 'mm-card__copy-actions' }, [copy, withMapLink ? mapButton(r, named) : null, directions, status]));
+    } else if (withMapLink || directions) {
+      parts.push(h('div', { class: 'mm-card__copy-actions' }, [withMapLink ? mapButton(r, named) : null, directions]));
     }
     const body = h('div', { class: 'mm-card__body' }, parts);
     const kids = [];
@@ -168,6 +170,16 @@
     }
     kids.push(body);
     return h(withCheckbox ? 'li' : 'article', { class: 'app-card mm-card', 'data-status': r.status.toLowerCase() }, kids);
+  }
+
+  const SIGNPOST_PATHS = '<path d="M12 13v8"/><path d="M12 3v3"/><path d="M18 6a2 2 0 0 1 1.387.56l2.307 2.22a1 1 0 0 1 0 1.44l-2.307 2.22A2 2 0 0 1 18 13H6a2 2 0 0 1-1.387-.56l-2.306-2.22a1 1 0 0 1 0-1.44l2.306-2.22A2 2 0 0 1 6 6z"/>';
+
+  // Directions as an icon-only link, the same look as the Copy and Show on map buttons. It opens another service,
+  // so it says so in its name and sends nothing until it is chosen. Null when there is nowhere to go.
+  function directionsButton(url, named) {
+    if (!url) return null;
+    return h('a', { role: 'button', class: 'copy-button directions-button', href: url, target: '_blank', rel: 'noreferrer',
+      'aria-label': 'Get directions: ' + named + ' (opens in a new tab)', title: 'Get directions' }, [svgIcon('signpost-icon', SIGNPOST_PATHS)]);
   }
 
   function mapButton(r, named) {
@@ -723,24 +735,38 @@
     if (returnFocus && key) focusMarkerOrMap(key);
   }
 
-  // The same places as the markers, as a text list: an alternative to the map itself.
+  // The same places as the markers, as a dropdown in alphabetical order: an alternative to the map itself.
+  // "All locations" is the default and means nothing is selected.
   function renderPlaces(locations) {
-    const list = $('map-places');
-    list.textContent = '';
+    const select = $('map-places');
+    select.textContent = '';
     $('map-places-section').hidden = locations.length === 0;
-    locations.forEach((group) => {
-      const button = h('button', { type: 'button', class: 'secondary', 'data-place': group.key,
-        text: group.name + ' (' + group.records.length + ')' });
-      button.addEventListener('click', () => selectLocation(group.key, true, true));
-      list.append(h('li', {}, button));
+    select.append(h('option', { value: '', text: 'All locations' }));
+    locations.slice().sort((a, b) => a.name.localeCompare(b.name)).forEach((group) => {
+      select.append(h('option', { value: group.key, text: group.name + ' (' + group.records.length + ')' }));
     });
     syncPlaces();
   }
 
   function syncPlaces() {
-    document.querySelectorAll('#map-places button').forEach((button) => {
-      button.setAttribute('aria-pressed', String(button.dataset.place === app.mapSelected));
-    });
+    const select = $('map-places');
+    select.value = app.mapSelected || '';
+    if (select.value !== (app.mapSelected || '')) select.value = '';
+  }
+
+  // Focus stays on the dropdown so arrowing through the options is not interrupted; the change is announced instead.
+  function onPlacesChange() {
+    const key = $('map-places').value;
+    const status = $('map-places-status');
+    if (!key) {
+      clearSelection(false);
+      if (app.map) fitMap();
+      say('Showing all locations.', status);
+      return;
+    }
+    selectLocation(key, false, true);
+    const entry = app.markers.get(key);
+    say('Showing ' + entry.group.name + ', ' + S.plural(entry.group.records.length, 'engagement') + '.', status);
   }
 
   // The details for the selected marker live below the map, as ordinary page content, so they work the
@@ -759,6 +785,8 @@
     const group = entry.group;
     $('map-selection-title').textContent = group.name;
     group.address.forEach((line) => body.append(h('p', { class: 'reach-map-line', text: line })));
+    const goThere = directionsButton(S.directionsUrl(group), group.name);
+    if (goThere) body.append(h('div', { class: 'mm-card__copy-actions reach-map-directions' }, goThere));
     body.append(h('p', { class: 'reach-map-count', text: '(' + S.plural(group.records.length, 'engagement') + ')' }));
     const copy = h('button', { type: 'button', class: 'secondary mm-copy-button', 'aria-label': 'Copy location and its engagements: ' + group.name, text: 'Copy' });
     const status = h('p', { class: 'app-help-text mm-card__copy-status', role: 'status' });
@@ -766,9 +794,7 @@
       const block = S.buildPlaceBlock(group);
       say(copyRichOrFallback(block.html, block.text) ? 'Copied location to clipboard.' : FALLBACK_MESSAGE, status);
     });
-    const directions = h('a', { role: 'button', class: 'secondary mm-copy-button', href: S.directionsUrl(group), target: '_blank', rel: 'noreferrer',
-      'aria-label': 'Get directions to ' + group.name + ' (opens in a new tab)', text: 'Get directions' });
-    body.append(h('div', { class: 'reach-map-actions' }, [copy, directions]), status);
+    body.append(h('div', { class: 'reach-map-actions' }, copy), status);
     const list = h('ul', { class: 'reach-map-events' });
     group.records.forEach((r) => list.append(h('li', {}, renderRecord(r, 4, false, true, false))));
     body.append(list);
@@ -805,6 +831,7 @@
       focusMarkerOrMap(app.mapSelected);
     });
     $('map-clear').addEventListener('click', () => clearSelection(true));
+    $('map-places').addEventListener('change', onPlacesChange);
     $('map-reset').addEventListener('click', () => { if (app.map) fitMap(); });
     const dialog = $('map-dialog');
     if (typeof dialog.showModal !== 'function') {
@@ -1077,6 +1104,13 @@
       rebuildCharts();
     });
     // A link styled as a button should also answer the Space key, as a button does.
+    // Links with role="button" (directions) answer the Space key like a button.
+    document.addEventListener('keydown', (e) => {
+      if (e.key === ' ' && e.target.matches && e.target.matches('a.directions-button')) {
+        e.preventDefault();
+        e.target.click();
+      }
+    });
     $('rss-feed-link').addEventListener('keydown', (e) => {
       if (e.key === ' ' && $('rss-feed-link').hasAttribute('href')) {
         e.preventDefault();

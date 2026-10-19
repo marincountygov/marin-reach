@@ -404,6 +404,16 @@
     return 'https://www.google.com/maps/dir/?api=1&destination=' + encodeURIComponent(destination);
   }
 
+  // Directions to one engagement's place, or '' when it has neither an address nor coordinates (virtual, no location).
+  function recordDirectionsUrl(record) {
+    const place = record.place;
+    if (!place || place.kind === 'virtual') return '';
+    const address = formatAddress(place);
+    const geo = place.geo;
+    if (!address.length && !geo) return '';
+    return directionsUrl({ address: address, latitude: geo && geo.latitude, longitude: geo && geo.longitude });
+  }
+
   // One map location with all of its engagements, as plain text and HTML, for the location's Copy button.
   function buildPlaceBlock(group) {
     const blocks = group.records.map(buildItemBlock);
@@ -492,6 +502,6 @@
     FACETS, VIEWS, RANGES, addDays, weekStart, weekDays, rangeBounds, shiftAnchor, calendarTitle, emptyState, parseQuery, serializeState, activeFilterCount, applyFilters,
     facetOptions, sortRecords, sortNewestFirst, sortByDate, SORTS, label, groupByDate, monthGrid, monthKey, shiftMonth, initialMonth,
     computeStats, formatTime, formatTimeRange, toISO, parseISO, formatDate, monthTitle, plural,
-    statusCounts, describeFilters, slugify, formatAddress, placeKey, mapPoints, mapSummary, clusterLabel, directionsUrl, buildPlaceBlock, markerLabel, toCsv, detailPairs, buildItemBlock, buildDigest, csvField,
+    statusCounts, describeFilters, slugify, formatAddress, placeKey, mapPoints, mapSummary, clusterLabel, directionsUrl, recordDirectionsUrl, buildPlaceBlock, markerLabel, toCsv, detailPairs, buildItemBlock, buildDigest, csvField,
   };
 });
