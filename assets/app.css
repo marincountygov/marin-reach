@@ -776,40 +776,17 @@ body[data-view="map"] .app-feedback:not(:focus) {
   margin: 0;
 }
 
-.reach-map-places__list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  list-style: none;
-  padding: 0;
-  margin: 0.5rem 0 0;
-}
-
-.reach-map-places__list > li {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-
-.reach-map-places__list button {
-  width: auto;
-  margin: 0;
-}
-
-.reach-map-places__list button[aria-pressed="true"] {
-  background: var(--app-accent);
-  border-color: var(--app-accent);
-  color: #ffffff;
-}
-
-@media (prefers-color-scheme: dark) {
-  .reach-map-places__list button[aria-pressed="true"] {
-    color: #101418;
-  }
-}
-
 .reach-map-places {
   margin-top: 1.25rem;
+}
+
+.reach-map-places label {
+  font-weight: 700;
+}
+
+.reach-map-places select {
+  max-width: 28rem;
+  margin: 0.25rem 0 0;
 }
 
 /* A cluster of nearby markers: one look, the count as text, white on Marin blue (4.6:1). */
@@ -855,4 +832,16 @@ body[data-view="map"] .app-feedback:not(:focus) {
 
 .reach-map-dialog .reach-map {
   height: max(18rem, calc(100dvh - 11rem));
+}
+
+/* Pico turns a link with role="button" into a block; the directions link needs the same centered layout as the Copy button. */
+a.copy-button.directions-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+}
+
+a.copy-button.directions-button svg {
+  display: block;
 }

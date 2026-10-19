@@ -225,8 +225,19 @@ def run(base, page, problems):
     page.locator("#record-list .copy-button").first.click()
     require(page.locator("#record-list .mm-card__copy-status").first.inner_text() == "Copied engagement to clipboard.",
             "Per-listing copy message missing")
-    require(page.locator("#record-list .copy-button:not(.show-on-map-button)").count() == total, "A Copy button per listing")
-    names = page.locator("#record-list .copy-button:not(.show-on-map-button)").evaluate_all("els => els.map(e => e.getAttribute('aria-label'))")
+    require(page.locator("#record-list .copy-button:not(.show-on-map-button):not(.directions-button)").count() == total, "A Copy button per listing")
+    with_directions = [r for r in expected if r.get("place", {}).get("address") or r.get("place", {}).get("geo")]
+    require(page.locator("#record-list .directions-button").count() == len(with_directions), "A directions button for every listing with an address or coordinates")
+    require(page.locator("#record-list .directions-button").evaluate_all("els => els.every(e => e.getAttribute('role') === 'button' && e.target === '_blank' && e.href.startsWith('https://www.google.com/maps/dir/?api=1&destination=') && /opens in a new tab/.test(e.getAttribute('aria-label')))"),
+            "Directions links are named, open in a new tab, and go to Google Maps")
+    gaps = page.locator("#record-list .mm-card__copy-actions").first.evaluate("""el => [...el.querySelectorAll('a.copy-button, button.copy-button')].map(b => {
+        const r = b.getBoundingClientRect(), v = [...b.querySelectorAll('svg')].map(x => x.getBoundingClientRect()).find(x => x.width > 0);
+        return Math.abs((v.top - r.top) - (r.bottom - v.bottom));
+    })""")
+    require(len(gaps) >= 2 and max(gaps) < 1, f"Icon buttons have the same space above and below their icon: {gaps}")
+    require(page.locator("#record-list .directions-button").first.evaluate("e => e.previousElementSibling.className.includes('copy-button')"),
+            "Directions sit to the right of Copy and Show on map")
+    names = page.locator("#record-list .copy-button:not(.show-on-map-button):not(.directions-button)").evaluate_all("els => els.map(e => e.getAttribute('aria-label'))")
     labels = page.locator("#record-list .mm-card__select label").all_text_contents()
     require(len(set(names)) == total and len(set(labels)) == total, "Per-listing control names must be unique")
     require(page.get_attribute("#rss-feed-link", "aria-label").startswith("RSS"), "RSS name must start with its visible text")
@@ -345,9 +356,9 @@ def run(base, page, problems):
     page.keyboard.press("Enter")
     require(page.evaluate("document.activeElement.id") == "map-selection-title", "Enter did not move focus to the details")
     require(page.locator("#map-selection-body article").count() >= 1, "Details show the selected engagements")
-    require(page.locator("#map-selection-body .reach-map-line").last.evaluate("e => e.nextElementSibling.className") == "reach-map-count",
-            "Engagement count follows the address")
-    require(page.locator("#map-selection-body .copy-button").count() == page.locator("#map-selection-body article").count(),
+    require(page.locator("#map-selection-body .reach-map-directions").evaluate("e => e.nextElementSibling.className") == "reach-map-count",
+            "Engagement count follows the address and its directions button")
+    require(page.locator("#map-selection-body .copy-button:not(.directions-button)").count() == page.locator("#map-selection-body article").count(),
             "A Copy button per listing")
     page.keyboard.press("Escape")
     require(page.evaluate("document.activeElement.classList.contains('leaflet-marker-icon')"), "Escape returns focus to the marker")
@@ -367,16 +378,25 @@ def run(base, page, problems):
     page.keyboard.press("Enter")
     require(page.locator("#map-selection-body button:not(.copy-button):not(.mm-copy-button)").count() == 0, "No Close or Open details buttons")
     # Text list of places, selected place in the URL, directions, copy, reset, Show on map, scroll behavior.
-    places = page.locator("#map-places button")
-    require(places.count() == len(sites), "One place button per marker")
-    require(places.evaluate_all("els => els.every(e => e.hasAttribute('aria-pressed'))"), "Place buttons report their state")
-    places.filter(has_text="Mill Valley Community Center").click()
+    page.click("#map-clear")  # clears the pin chosen above, so the dropdown is back to its default
+    options = page.locator("#map-places option")
+    labels = options.all_inner_texts()
+    require(labels[0] == "All locations" and page.input_value("#map-places") == "", "The dropdown starts on All locations")
+    require(len(labels) == len(sites) + 1, "One option per marker location, plus All locations")
+    names = [re.sub(r" \(\d+\)$", "", label) for label in labels[1:]]
+    require(names == sorted(names, key=str.casefold), f"Locations are in alphabetical order: {names}")
+    page.focus("#map-places")
+    page.select_option("#map-places", label="Mill Valley Community Center (3)")
     require("place=37.898796%2C-122.528346" in page.url and "view=map" in page.url, f"Selected place missing from URL: {page.url}")
-    require(page.evaluate("document.activeElement.id") == "map-selection-title", "A place button moves focus to the details")
-    require(page.get_attribute("#map-places button[aria-pressed=true]", "data-place") == "37.898796,-122.528346", "Selected place is pressed")
+    require(page.evaluate("document.activeElement.id") == "map-places", "Focus stays on the dropdown")
+    require(page.is_visible("#map-selection") and page.inner_text("#map-selection-title") == "Mill Valley Community Center", "The chosen location's details show")
+    require("Mill Valley Community Center" in page.inner_text("#map-places-status"), "The change is announced")
+    require(page.input_value("#map-places") == "37.898796,-122.528346", "The dropdown shows the selected place")
     require(page.locator("#map-selection-body a[role=button]").get_attribute("href").startswith("https://www.google.com/maps/dir/?api=1&destination=180%20Camino%20Alto"),
             "Get directions link")
     require(page.get_attribute("#map-selection-body a[role=button]", "target") == "_blank", "Directions open in a new tab")
+    require(page.locator("#map-selection-body a.directions-button").count() == 1, "One directions button for the location, not one per card")
+    require(page.locator("#map-selection-body .reach-map-line").last.evaluate("e => e.nextElementSibling.querySelector('a.directions-button') !== null"), "Directions sit directly below the address")
     page.click("#map-selection-body .reach-map-actions button")
     require(page.locator("#map-selection-body > p[role=status]").inner_text() == "Copied location to clipboard.", "Copy for a whole place")
     page.goto(page.url)
@@ -463,7 +483,7 @@ def run(base, page, problems):
     require(page.locator(".reach-pin").count() > before, "Activating a cluster zooms in and shows more markers")
     page.goto(base + "?view=map")
     page.wait_for_selector("#panel-map:not([hidden]) .leaflet-marker-icon")
-    page.locator("#map-places button", has_text="Test place 3").click()
+    page.select_option("#map-places", label="Test place 3 (1)")
     page.locator(".reach-pin.is-selected").wait_for(timeout=8000)  # the map zooms out of the cluster first
     require(page.inner_text("#map-selection-title") == "Test place 3" and page.locator(".reach-pin.is-selected").count() == 1,
             "A clustered place from the list is revealed and selected")

@@ -43,7 +43,24 @@ This is not a full WCAG conformance audit and not a screen reader test. Findings
 - Text spacing (1.4.12): no clipped text with the WCAG spacing values applied.
 - Status is written as text everywhere. The calendar adds outline patterns, and the legend explains them.
 
+## Map review (2026-10-20)
+
+Automated and scripted checks of the Map tab, clusters and the full window view, in Chromium, light and dark. This is not a full WCAG conformance audit and not a screen reader test.
+
+| Area | What was checked | Result |
+|---|---|---|
+| Keyboard | Reach the map, a marker and a cluster, choose with Enter and Space, read the details, use Copy and Get directions, close with Escape or Clear, leave the map with Tab. | Works. Focus moves to the details on a keyboard or screen reader choice, and returns to the marker, or to the map when the marker is inside a cluster. |
+| Names | Markers are named "Event at Place" or "Place, N engagements". Clusters are named "N locations, N engagements. Press Enter to zoom in." Zoom controls are named. | Works. A test checks that no marker is named only "Marker". |
+| Automated scan | axe-core (WCAG 2.2 A and AA plus best practices) on the Map tab with clusters and on the open full window, light and dark. | Only two findings, both from the shell and also on the List tab: the filter sidebar sits inside another landmark, and the Feedback element is outside any landmark. |
+| Full window | A modal dialog with a name; Escape closes it; focus returns to the Full window button; the details, list and controls move in with it. | Works. No horizontal scroll at 320 px. |
+| Scrolling | The mouse wheel and one-finger drag leave the page alone until the map is used. Reduced motion turns off pan, zoom and cluster animation. | Works in tests. |
+| Focus ring | A black ring with a white edge, so it shows on light tiles in both color schemes. | Works. |
+
+Known limits: clusters and pins on the OpenStreetMap tiles were checked by screenshot, not with a contrast tool, and the library's own zoom control links respond to Space only because the app adds that.
+
 ## Needs manual testing
+
+- Map: VoiceOver with Safari (marker and cluster names, activating a marker with the screen reader's own command, where focus lands after a cluster zooms, the full window dialog), a real touch device (choosing a marker, two-finger pan and zoom, one-finger scroll past the map), and 400% zoom.
 
 - Screen readers (NVDA, JAWS, VoiceOver, TalkBack): how the long "Showing:" line is read on every filter change, how the calendar grid and agenda read, the chart summaries, and the dialog.
 - Voice control and switch access.
