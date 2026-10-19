@@ -5,6 +5,7 @@ from __future__ import annotations
 from copy import deepcopy
 import importlib.util
 import json
+import re
 from pathlib import Path
 import tempfile
 import unittest
@@ -70,7 +71,7 @@ class SecurityMetaTests(unittest.TestCase):
 
     def test_policy_must_be_a_direct_child_of_head(self):
         block = META.generated_block(CONFIG)
-        text = HTML.replace(block, "").replace("<body>", "<body>\n" + block)
+        text = re.sub(r"(<body[^>]*>)", lambda m: m.group(1) + "\n" + block, HTML.replace(block, ""), count=1)
         with self.assertRaisesRegex(ValueError, "direct children"):
             META.render_html(text, CONFIG)
 
