@@ -498,18 +498,18 @@ def run(base, page, problems):
     page.set_viewport_size({"width": 1280, "height": 900})
 
     # Filters button: icon only, white, first in the left column; the panel hides without changing the filters, and the choice is remembered on wide screens.
-    page.evaluate("localStorage.removeItem('reach.filters')")
+    page.evaluate("localStorage.removeItem('marinos.filters.marin-reach.filters')")
     page.goto(base + "?status=Planned")
     page.wait_for_selector("#reach-app:not([hidden])")
     require(page.is_visible("#filter-toggle") and page.inner_text("#filter-toggle").strip() == "", "The Filters button shows an icon and no text")
-    require(page.get_attribute("#filter-toggle", "aria-label") == "Filters, 1 active", page.get_attribute("#filter-toggle", "aria-label"))
+    page.wait_for_function("document.getElementById('filter-toggle').getAttribute('aria-label') === 'Filters, 1 active'", timeout=3000)  # the shell names the button from data-filter-active
     require(page.evaluate("document.querySelector('.search-side').firstElementChild.id") == "filter-toggle", "The button is first in the left column, above the filters")
     require(page.evaluate("getComputedStyle(document.getElementById('filter-toggle')).backgroundColor") != "rgba(0, 0, 0, 0)", "The button has a solid background")
     look = "el => { const c = getComputedStyle(el); return [c.borderTopWidth, c.borderTopColor, c.borderRadius, c.backgroundColor, c.color]; }"
     require(page.locator("#filter-toggle").evaluate(look) == page.locator("#record-list .copy-button").first.evaluate(look),
             "The Filters button has the same border, radius and colors as the card icon buttons")
     require(page.is_visible("#filter-panel") and page.get_attribute("#filter-toggle", "aria-expanded") == "true", "Filters start open on wide screens")
-    require(page.is_visible("#filter-toggle .reach-filters-icon-open") and not page.is_visible("#filter-toggle .reach-filters-icon-closed"), "Open filters show the panel-right-open icon")
+    require(page.is_visible("#filter-toggle [data-filter-icon=open]") and not page.is_visible("#filter-toggle [data-filter-icon=closed]"), "Open filters show the panel-right-open icon")
     require(abs(page.evaluate("document.getElementById('filter-toggle').getBoundingClientRect().right - document.getElementById('filter-panel').getBoundingClientRect().right")) < 1,
             "Open, the button sits at the right edge of the filters column")
     shown, width_open = count(page), page.evaluate("document.querySelector('.search-results').offsetWidth")
@@ -517,7 +517,7 @@ def run(base, page, problems):
     page.keyboard.press("Enter")
     require(not page.is_visible("#filter-panel") and page.get_attribute("#filter-toggle", "aria-expanded") == "false", "Enter hides the filters")
     require(page.is_visible("#filter-toggle") and page.evaluate("document.activeElement.id") == "filter-toggle", "The button stays and keeps focus")
-    require(page.is_visible("#filter-toggle .reach-filters-icon-closed") and not page.is_visible("#filter-toggle .reach-filters-icon-open"), "Hidden filters show the panel-left-open icon")
+    require(page.is_visible("#filter-toggle [data-filter-icon=closed]") and not page.is_visible("#filter-toggle [data-filter-icon=open]"), "Hidden filters show the panel-left-open icon")
     require(page.evaluate("document.getElementById('filter-toggle').getBoundingClientRect().left") < 40, "Hidden, the button sits at the left edge")
     require(count(page) == shown and "Status: Planned" in summary(page), "Hiding the filters does not change what is filtered")
     require(page.evaluate("document.querySelector('.search-results').offsetWidth") > width_open, "The results use the freed width")
@@ -543,7 +543,7 @@ def run(base, page, problems):
     page.set_viewport_size({"width": 1280, "height": 900})
     page.wait_for_timeout(200)
     require(page.is_visible("#filter-panel"), "Wide screens go back to the remembered choice")
-    page.evaluate("localStorage.removeItem('reach.filters')")
+    page.evaluate("localStorage.removeItem('marinos.filters.marin-reach.filters')")
     page.goto(base)
     page.wait_for_selector("#reach-app:not([hidden])")
 

@@ -22,7 +22,7 @@
     <script src="assets/selectors.js" defer></script>
     <script src="assets/app.js" defer></script>
   </head>
-  <body>
+  <body data-app-id="marin-reach">
     <noscript>
       <div class="container app-alert app-alert--warning">
         JavaScript is required to display the MarinOS interface and use this application.
@@ -57,7 +57,7 @@
 
           <form id="filters" class="search-layout" aria-label="Filter engagements">
             <div class="search-side">
-              <button type="button" id="filter-toggle" class="reach-filter-toggle" data-filter-toggle aria-expanded="false" aria-controls="filter-panel" aria-label="Filters" title="Filters"><svg class="reach-filters-icon-open" viewBox="0 0 24 24" aria-hidden="true"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M15 3v18"/><path d="m10 15-3-3 3-3"/></svg><svg class="reach-filters-icon-closed" viewBox="0 0 24 24" aria-hidden="true" hidden><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/><path d="m14 9 3 3-3 3"/></svg></button>
+              <button type="button" id="filter-toggle" class="filter-toggle" data-filter-toggle="filters" aria-controls="filter-panel"></button>
             <aside id="filter-panel" class="search-sidebar" aria-label="Filters" data-open="false">
               <div class="search-input-field">
                 <label for="filter-search">Search</label>
