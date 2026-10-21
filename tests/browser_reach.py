@@ -141,7 +141,7 @@ def run(base, page, problems):
     require(page.get_by_role("button", name="Today", exact=True).count() == 0, "There is no Today button")
     order = page.evaluate("[...document.querySelectorAll('.reach-cal-controls > *')].map((e) => e.id || e.className)")
     require(order.index("cal-range") < [i for i, v in enumerate(order) if "reach-cal-nav" in v][0], f"The range menu comes before < and >: {order}")
-    require(page.get_attribute("#cal-prev", "aria-label") == "Previous month" and page.inner_text("#cal-prev") == "<" and page.inner_text("#cal-next") == ">", "< > buttons")
+    require(page.get_attribute("#cal-prev", "aria-label") == "Previous month" and page.get_attribute("#cal-next", "aria-label") == "Next month" and page.inner_text("#cal-prev") == "" and page.inner_text("#cal-next") == "", "< > buttons")
     require(page.inner_text("#cal-title") == "November 2026", "Month view starts on November")
     page.select_option("#cal-range", "week")
     require(page.inner_text("#cal-title") == "Nov 8 \u2013 Nov 14, 2026", page.inner_text("#cal-title"))
@@ -158,7 +158,7 @@ def run(base, page, problems):
     require(link["x"] >= nxt["x"] + nxt["width"] and abs(link["y"] - nxt["y"]) < 8, "Link button sits to the right of < and >")
     page.click("#cal-link")
     page.locator("#cal-status:not(:empty)").wait_for()
-    require(page.is_hidden(".mm-results-buttons"), "The toolbar row steps aside on the calendar")
+    require(page.locator("#results-toolbar .action-group:visible").count() == 0 and page.is_visible("#filter-search"), "The toolbar buttons step aside on the calendar; the search stays")
     page.click("#cal-next")
     require(page.inner_text("#cal-title") == "Nov 15 \u2013 Nov 21, 2026" and page.locator("#cal-body .reach-cal-event").count() == 2, "Next week moved a week")
     page.click("#cal-prev")
@@ -376,7 +376,7 @@ def run(base, page, problems):
     require(page.is_hidden("#map-selection") and page.is_hidden("#map-clear"), "Clear should hide the details")
     require(page.evaluate("document.activeElement.classList.contains('leaflet-marker-icon')"), "Clear returns focus to the marker")
     page.keyboard.press("Enter")
-    require(page.locator("#map-selection-body button:not(.copy-button):not(.mm-copy-button)").count() == 0, "No Close or Open details buttons")
+    require(page.locator("#map-selection-body button:not(.copy-button):not(.action-button)").count() == 0, "No Close or Open details buttons")
     # Text list of places, selected place in the URL, directions, copy, reset, Show on map, scroll behavior.
     page.click("#map-clear")  # clears the pin chosen above, so the dropdown is back to its default
     options = page.locator("#map-places option")
@@ -506,8 +506,9 @@ def run(base, page, problems):
     require(page.evaluate("document.querySelector('.search-side').firstElementChild.id") == "filter-toggle", "The button is first in the left column, above the filters")
     require(page.evaluate("getComputedStyle(document.getElementById('filter-toggle')).backgroundColor") != "rgba(0, 0, 0, 0)", "The button has a solid background")
     look = "el => { const c = getComputedStyle(el); return [c.borderTopWidth, c.borderTopColor, c.borderRadius, c.backgroundColor, c.color]; }"
-    require(page.locator("#filter-toggle").evaluate(look) == page.locator("#record-list .copy-button").first.evaluate(look),
-            "The Filters button has the same border, radius and colors as the card icon buttons")
+    edge = "el => { const c = getComputedStyle(el); return [c.borderTopWidth, c.borderTopColor, c.borderRadius]; }"
+    require(page.locator("#filter-toggle").evaluate(edge) == page.locator("#record-list .action-group").first.evaluate(edge),
+            "The Filters button has the same border and radius as the card button group")
     require(page.is_visible("#filter-panel") and page.get_attribute("#filter-toggle", "aria-expanded") == "true", "Filters start open on wide screens")
     require(page.is_visible("#filter-toggle [data-filter-icon=open]") and not page.is_visible("#filter-toggle [data-filter-icon=closed]"), "Open filters show the panel-right-open icon")
     require(abs(page.evaluate("document.getElementById('filter-toggle').getBoundingClientRect().right - document.getElementById('filter-panel').getBoundingClientRect().right")) < 1,
@@ -536,7 +537,7 @@ def run(base, page, problems):
     page.set_viewport_size({"width": 360, "height": 740})
     page.wait_for_timeout(200)
     require(page.is_visible("#filter-toggle") and not page.is_visible("#filter-panel"), "Narrow screens keep the button and start closed")
-    require(page.evaluate("document.getElementById('filter-toggle').getBoundingClientRect().bottom <= document.querySelector('.search-results').getBoundingClientRect().top"), "On narrow screens the button is above the results")
+    require(page.evaluate("(() => { const t = document.getElementById('filter-toggle').getBoundingClientRect(); const r = document.getElementById('view-tab-row').getBoundingClientRect(); return t.right <= r.left + 1 && Math.abs(t.top - r.top) < 12; })()"), "On narrow screens the button sits beside the tab row, not on a row of its own")
     page.click("#filter-toggle")
     require(page.is_visible("#filter-panel") and page.evaluate("document.getElementById('filter-toggle').getBoundingClientRect().bottom <= document.getElementById('filter-panel').getBoundingClientRect().top"),
             "The narrow button opens the filters below itself")
@@ -554,7 +555,7 @@ def run(base, page, problems):
             "Deep link did not restore state")
     page.goto(base)
     page.wait_for_selector("#reach-app:not([hidden])")
-    page.focus("#filter-search")
+    page.focus("#filter-toggle")
     seen = set()
     for _ in range(40):
         page.keyboard.press("Tab")

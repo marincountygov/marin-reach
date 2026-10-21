@@ -159,14 +159,14 @@
       h('dl', { class: 'reach-record__meta' }, rows),
     ];
     if (withCopy) {
-      const copy = h('button', { type: 'button', class: 'copy-button', 'aria-label': 'Copy engagement: ' + named }, [
+      const copy = h('button', { type: 'button', class: 'copy-button', 'aria-label': 'Copy engagement: ' + named, title: 'Copy' }, [
         copyIcon(), checkIcon(),
       ]);
       const status = h('p', { class: 'app-help-text mm-card__copy-status', role: 'status' });
       copy.addEventListener('click', () => copyItem(r, copy, status));
-      parts.push(h('div', { class: 'mm-card__copy-actions' }, [copy, withMapLink ? mapButton(r, named) : null, directions, status]));
+      parts.push(h('div', { class: 'mm-card__copy-actions' }, [h('div', { class: 'action-group', role: 'group', 'aria-label': 'Actions: ' + named }, [copy, withMapLink ? mapButton(r, named) : null, directions]), status]));
     } else if (withMapLink || directions) {
-      parts.push(h('div', { class: 'mm-card__copy-actions' }, [withMapLink ? mapButton(r, named) : null, directions]));
+      parts.push(h('div', { class: 'mm-card__copy-actions' }, h('div', { class: 'action-group', role: 'group', 'aria-label': 'Actions: ' + named }, [withMapLink ? mapButton(r, named) : null, directions])));
     }
     const body = h('div', { class: 'mm-card__body' }, parts);
     const kids = [];
@@ -787,16 +787,16 @@
     section.hidden = !entry;
     $('map-clear').hidden = !entry;
     if (!entry) {
-      $('map-selection-title').textContent = '';
+      $('map-selection-title').textContent = 'Selected location';
       return;
     }
     const group = entry.group;
     $('map-selection-title').textContent = group.name;
     group.address.forEach((line) => body.append(h('p', { class: 'reach-map-line', text: line })));
     const goThere = directionsButton(S.directionsUrl(group), group.name);
-    if (goThere) body.append(h('div', { class: 'mm-card__copy-actions reach-map-directions' }, goThere));
+    if (goThere) body.append(h('div', { class: 'mm-card__copy-actions reach-map-directions' }, h('div', { class: 'action-group', role: 'group', 'aria-label': 'Actions: ' + group.name }, goThere)));
     body.append(h('p', { class: 'reach-map-count', text: '(' + S.plural(group.records.length, 'engagement') + ')' }));
-    const copy = h('button', { type: 'button', class: 'secondary mm-copy-button', 'aria-label': 'Copy location and its engagements: ' + group.name, text: 'Copy' });
+    const copy = h('button', { type: 'button', class: 'action-button', 'aria-label': 'Copy location and its engagements: ' + group.name, title: 'Copy' }, [copyIcon()]);
     const status = h('p', { class: 'app-help-text mm-card__copy-status', role: 'status' });
     copy.addEventListener('click', () => {
       const block = S.buildPlaceBlock(group);
@@ -948,9 +948,8 @@
       tab.setAttribute('aria-selected', String(on));
       tab.tabIndex = on ? 0 : -1;
     });
-    // On the calendar the Link button sits beside the < and > buttons, so the toolbar row steps aside.
+    // On the calendar the Link button sits beside the < and > buttons, so the toolbar's buttons step aside (the search stays).
     $('copy-link-button').hidden = view === 'calendar';
-    document.querySelector('.mm-results-buttons').hidden = view === 'calendar';
     $('sort-group').hidden = !list;
     $('sort-newest').setAttribute('aria-pressed', String(app.state.sort === 'newest'));
     $('sort-oldest').setAttribute('aria-pressed', String(app.state.sort === 'oldest'));
