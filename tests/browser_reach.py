@@ -404,9 +404,11 @@ def run(base, page, problems):
     require(page.inner_text("#map-selection-title") == "Mill Valley Community Center", "The selected place did not restore from the URL")
     page.click("#map-clear")
     require("place=" not in page.url, "Clear removes the place from the URL")
-    require(page.is_visible("#map-reset") and page.inner_text("#map-reset") == "Re-center", "Re-center button")
+    require(page.is_visible("#map-reset") and page.get_attribute("#map-reset", "aria-label") == "Re-center the map", "Re-center button")
     page.click(".leaflet-control-zoom-in")
     page.click("#map-reset")
+    page.evaluate("window.scrollTo(0, 0)")  # the page has room to scroll, whatever the buttons above the map measure
+    page.wait_for_timeout(100)
     box = page.locator("#map").bounding_box()
     page.mouse.move(box["x"] + 200, box["y"] + 150)
     before = page.evaluate("window.scrollY")
@@ -443,11 +445,11 @@ def run(base, page, problems):
     # Full window: a modal dialog that fills the window, keeps the details, closes with Escape, and returns focus.
     page.goto(base + "?view=map")
     page.wait_for_selector("#panel-map:not([hidden]) .leaflet-marker-icon")
-    require(page.inner_text("#map-fullwindow") == "Full window", "Full window button")
+    require(page.get_attribute("#map-fullwindow", "aria-label") == "Full window", "Full window button")
     page.click("#map-fullwindow")
     require(page.evaluate("document.getElementById('map-dialog').matches(':modal')"), "Full window should be a modal dialog")
     require(page.evaluate("!!document.querySelector('#map-dialog #map') && !!document.querySelector('#map-dialog #map-places')"), "The map and locations list move into the dialog")
-    require(page.inner_text("#map-fullwindow") == "Exit full window" and page.evaluate("document.activeElement.id") == "map-fullwindow", "Exit full window button has focus")
+    require(page.get_attribute("#map-fullwindow", "aria-label") == "Exit full window" and page.evaluate("document.activeElement.id") == "map-fullwindow", "Exit full window button has focus")
     require(page.is_visible("#map-fullwindow .reach-fw-exit") and not page.is_visible("#map-fullwindow .reach-fw-enter"), "Full window button shows the exit icon while open")
     require(page.evaluate("document.getElementById('map').offsetHeight") >= 288, "The full window map has room")
     page.locator(".reach-pin").first.click()
@@ -457,7 +459,7 @@ def run(base, page, problems):
     require(not page.evaluate("document.getElementById('map-dialog').open"), "Escape closes the full window")
     page.locator("#map-stage-home #map-stage").wait_for()  # the close event runs after the dialog closes
     require(page.evaluate("document.getElementById('map-stage').parentElement.id") == "map-stage-home", "The map returns to the page")
-    require(page.evaluate("document.activeElement.id") == "map-fullwindow" and page.inner_text("#map-fullwindow") == "Full window", "Focus returns to the Full window button")
+    require(page.evaluate("document.activeElement.id") == "map-fullwindow" and page.get_attribute("#map-fullwindow", "aria-label") == "Full window", "Focus returns to the Full window button")
     # Clusters: nearby locations group together, named by what they hold, keyboard operable, and a clustered place can still be chosen.
     def many(route):
         response = route.fetch()
