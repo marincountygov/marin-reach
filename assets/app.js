@@ -828,7 +828,9 @@
     const button = $('map-fullwindow');
     button.querySelector('.reach-fw-enter').toggleAttribute('hidden', open);
     button.querySelector('.reach-fw-exit').toggleAttribute('hidden', !open);
-    $('map-fullwindow-text').textContent = open ? 'Exit full window' : 'Full window';
+    const fullLabel = open ? 'Exit full window' : 'Full window';
+    button.setAttribute('aria-label', fullLabel);
+    button.title = fullLabel;
   }
 
   // Escape in the details goes back to the marker that opened them.
