@@ -50,7 +50,7 @@
         <div id="reach-loading" class="app-alert app-alert--info" role="status">Loading Marin Reach&hellip;</div>
         <div id="reach-error" class="app-alert app-alert--danger" role="alert" hidden>
           <p id="reach-error-text">The engagement records could not be loaded.</p>
-          <button type="button" id="reach-retry" class="secondary">Try again</button>
+          <button type="button" id="reach-retry" class="action-button">Try again</button>
         </div>
 
         <div id="reach-app" hidden>
@@ -81,12 +81,12 @@
             </div>
 
             <div class="search-results">
-              <div class="mm-tab-row" id="view-tab-row">
+              <div class="tab-list" id="view-tab-row">
                 <div role="tablist" aria-label="Display" id="view-tabs">
-                  <button type="button" role="tab" id="tab-list" aria-selected="true" aria-controls="panel-list" data-view="list" class="mm-tab">List</button>
-                  <button type="button" role="tab" id="tab-calendar" aria-selected="false" aria-controls="panel-calendar" data-view="calendar" class="mm-tab" tabindex="-1">Calendar</button>
-                  <button type="button" role="tab" id="tab-map" aria-selected="false" aria-controls="panel-map" data-view="map" class="mm-tab" tabindex="-1">Map</button>
-                  <button type="button" role="tab" id="tab-stats" aria-selected="false" aria-controls="panel-stats" data-view="stats" class="mm-tab" tabindex="-1">Stats</button>
+                  <button type="button" role="tab" id="tab-list" aria-selected="true" aria-controls="panel-list" data-view="list" class="tab-button">List</button>
+                  <button type="button" role="tab" id="tab-calendar" aria-selected="false" aria-controls="panel-calendar" data-view="calendar" class="tab-button" tabindex="-1">Calendar</button>
+                  <button type="button" role="tab" id="tab-map" aria-selected="false" aria-controls="panel-map" data-view="map" class="tab-button" tabindex="-1">Map</button>
+                  <button type="button" role="tab" id="tab-stats" aria-selected="false" aria-controls="panel-stats" data-view="stats" class="tab-button" tabindex="-1">Stats</button>
                 </div>
               </div>
 
@@ -136,7 +136,7 @@
                   </label>
                 </div>
                 <ul id="record-list" class="search-results-list" aria-label="Matching engagements"></ul>
-                <button type="button" id="show-more" class="secondary" hidden>Show more</button>
+                <button type="button" id="show-more" class="action-button" hidden>Show more</button>
               </div>
 
               <div id="panel-calendar" role="tabpanel" aria-labelledby="tab-calendar" data-range="month" hidden>
@@ -178,7 +178,7 @@
 
               <div id="panel-map" role="tabpanel" aria-labelledby="tab-map" hidden>
                 <div id="map-empty" class="app-alert app-alert--warning" hidden>
-                  <p><strong id="map-empty-text">No mapped engagements match these filters.</strong> <button type="button" class="secondary" id="map-go-list">Go to List</button></p>
+                  <p><strong id="map-empty-text">No mapped engagements match these filters.</strong> <button type="button" class="action-button" id="map-go-list">Go to List</button></p>
                 </div>
                 <div id="map-stage-home">
                 <div id="map-stage">

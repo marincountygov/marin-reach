@@ -243,7 +243,7 @@
     if (time) kids.push(h('span', { class: 'reach-cal-time', text: time }));
     kids.push(h('span', { class: 'reach-cal-label', text: S.label(r) }));
     kids.push(h('span', { class: withBadge ? 'app-badge' : 'visually-hidden', text: withBadge ? r.status : ', ' + r.status }));
-    const button = h('button', { type: 'button', class: 'reach-cal-event', 'data-status': r.status.toLowerCase(), 'data-id': r.id }, kids);
+    const button = h('button', { type: 'button', class: 'reach-cal-event', 'data-button-kind': 'content', 'data-status': r.status.toLowerCase(), 'data-id': r.id }, kids);
     button.addEventListener('click', () => openRecord(r, button));
     return button;
   }
