@@ -88,10 +88,16 @@ def configure(context, base_url: str) -> tuple[list[str], list[str]]:
 
     context.route("**/*", intercept)
 
+    # When served from localhost, the shell reads the Accessibility score and Tech data from a
+    # local MarinOS dev server (http://localhost:8935) instead of the deployed marin-os. The
+    # app's CSP correctly blocks that origin, and the shell shows its "couldn't load" message.
+    # That is expected here, so these console messages are not app errors.
+    local_dev_data = ("localhost:8935", "loadScore", "loadTech")
+
     def observe(page) -> None:
         page.on("pageerror", lambda error: problems.append(str(error)))
         page.on("console", lambda msg: problems.append(f"console {msg.type}: {msg.text}")
-                if msg.type in ("error", "warning") else None)
+                if msg.type in ("error", "warning") and not any(t in msg.text for t in local_dev_data) else None)
         page.on("response", lambda response: problems.append(f"HTTP {response.status}: {response.url}")
                 if response.status >= 400 else None)
 
@@ -198,12 +204,15 @@ def run(screenshots: Path | None, in_memory: bool = False) -> None:
             require(page.locator("#app-nav a").all_text_contents() == ["About", "Updates"],
                     "Header navigation differs from the starter contract")
             require(page.locator(".app-footer__nav a").all_text_contents()
-                    == ["About", "Security", "Accessibility", "Updates"], "Footer links differ")
+                    == ["About", "Security", "Accessibility", "Tech", "Updates"], "Footer links differ")
             require(page.locator(".app-footer__app-name").evaluate("el => el.tagName") == "SPAN",
                     "Footer app name should remain plain text")
-            require(page.locator(".app-icon svg rect").count() == 4, "Starter icon did not render")
-            home = page.locator(".app-identity > a.app-identity__home[href='./']")
-            require(home.locator(".app-title-row").count() == 1, "Identity is not wrapped by the home link")
+            require(page.locator(".app-icon svg").count() == 1 and page.locator(".app-icon svg path").count() == 4
+                    and page.locator(".app-icon svg rect").count() == 0, "Marin Reach icon did not render")
+            home = page.locator(".app-title-row h1 > a.app-title__link[href='./']")
+            require(home.count() == 1, "The app title is not the home link")
+            require(page.locator(".app-title-row a[href='./']").count() == 1,
+                    "Only the title text should link home (not the icon, subtitle, or status badge)")
             duplicates = page.evaluate("""() => {
               const ids = [...document.querySelectorAll('[id]')].map(el => el.id);
               return ids.filter((id, index) => ids.indexOf(id) !== index);
@@ -218,7 +227,10 @@ def run(screenshots: Path | None, in_memory: bool = False) -> None:
             require(page.locator("#about h2").count() == 1, "About heading duplicated")
             page.locator(".app-footer__nav a[href='#security']").click()
             route_is(page, "security")
-            page.locator("[data-security-content]").get_by_text(SECURITY["publicSecurity"]["profile"]).wait_for()
+            # The shell shows "Built for" (from marin.yml's audience) or the security profile label.
+            page.locator("[data-security-content]").get_by_text(re.compile("Built for|Security profile")).first.wait_for()
+            for control in SECURITY["publicSecurity"]["controls"]:
+                page.locator("[data-security-content]").get_by_text(control).first.wait_for()
             page.locator(".app-footer__nav a[href='#accessibility']").click()
             route_is(page, "accessibility")
             require(page.locator("#accessibility h2").count() == 1, "Accessibility heading duplicated")
@@ -254,7 +266,7 @@ def run(screenshots: Path | None, in_memory: bool = False) -> None:
                 page.goto(f"{base_url}?example=1#about", wait_until="networkidle")
                 ready(page)
                 page.evaluate("window.__homeNavigationSentinel = true")
-                page.locator(".app-identity__home").click()
+                page.locator("a.app-title__link").click()
                 page.wait_for_url(base_url)
                 ready(page)
                 route_is(page, "start")
