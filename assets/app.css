@@ -10,20 +10,10 @@
   followed by a reviewed shell release, not an edit to vendor/marinos/.
 */
 
-/* The filter layout (.search-layout, .search-side, .search-sidebar, .search-results) and the Filters button
-   (.filter-toggle) come from Marin UI through the shell. The field and facet styles below stay with the app. */
-.search-input-field {
-  margin-bottom: 1.5rem;
-}
-
-.search-input-field label {
-  display: block;
-  margin-bottom: 0.35rem;
-  font-weight: 700;
-  font-size: 0.9rem;
-}
-
-.search-input-field input[type="search"],
+/* The filter layout (.search-layout, .search-side, .search-sidebar, .search-results), the Filters button
+   (.filter-toggle), the search field (.search-input-field) and the filter groups (.search-facet-group,
+   .search-facet-list, .search-facet-count, .mm-facet-group) come from Marin UI through the shell. Only the
+   date fields and the card checkboxes are the app's own. */
 .search-input-field input[type="date"] {
   width: 100%;
 }
@@ -32,77 +22,12 @@
   margin-bottom: 0.75rem;
 }
 
-.search-facet-group {
-  margin: 0 0 1.5rem;
-  padding: 0;
-  border: 0;
-}
-
-.search-facet-group legend {
-  margin-bottom: 0.5rem;
-  padding: 0;
-  font-weight: 700;
-  font-size: 0.9rem;
-}
-
-.search-facet-list {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.search-facet-list li {
-  margin: 0 0 0.45rem;
-  padding: 0;
-  list-style: none;
-}
-
-.search-facet-list li:last-child {
-  margin-bottom: 0;
-}
-
-.search-facet-list label {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  margin-bottom: 0;
-  font-size: 0.875rem;
-  font-weight: 400;
-  color: var(--app-text);
-}
-
-.search-facet-list input[type="checkbox"] {
-  margin: 0;
-}
-
 /* Checkboxes are 24 px square (WCAG 2.5.8 target size), larger than Pico's default of about 18 px. */
-.search-facet-list input[type="checkbox"],
 .mm-card__select input[type="checkbox"],
 .mm-select-all input[type="checkbox"] {
   width: 1.5rem;
   height: 1.5rem;
   flex: none;
-}
-
-.search-facet-count {
-  color: var(--app-muted);
-  font-size: 0.8rem;
-}
-
-/* Collapsed dropdown per filter, as the monitor groups in marin-mentions. */
-.mm-facet-group {
-  margin-bottom: 0.5rem;
-}
-
-.mm-facet-group summary {
-  cursor: pointer;
-  padding: 0.25rem 0;
-  font-weight: 700;
-  font-size: 0.9rem;
-}
-
-.mm-facet-group .search-facet-group {
-  margin: 0.25rem 0 0.75rem;
 }
 
 /* The tab row (.tab-list) and its buttons (.tab-button) come from the shell. */
