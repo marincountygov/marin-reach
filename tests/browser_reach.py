@@ -241,8 +241,16 @@ def run(base, page, problems):
     labels = page.locator("#record-list .mm-card__select label").all_text_contents()
     require(len(set(names)) == total and len(set(labels)) == total, "Per-listing control names must be unique")
     require(page.get_attribute("#rss-feed-link", "aria-label").startswith("RSS"), "RSS name must start with its visible text")
-    page.click("#copy-list-button")
-    require(page.inner_text("#action-status") == f"Copied {total} engagements to clipboard.", page.inner_text("#action-status"))
+    for choice, marker, said in (("text", None, f"Copied {total} engagements to clipboard."),
+                                 ("html", "<", f"Copied {total} engagements to clipboard as HTML."),
+                                 ("markdown", "**", f"Copied {total} engagements to clipboard as Markdown.")):
+        page.click("#copy-list-button")
+        page.click(f"#copy-list-menu [data-copy-list='{choice}']")
+        page.wait_for_function("(said) => document.querySelector('#action-status').textContent === said", arg=said)
+        require(page.inner_text("#action-status") == said, page.inner_text("#action-status"))
+        if marker:
+            copied = page.evaluate("navigator.clipboard.readText()")
+            require(marker in copied, f"Copy as {choice} puts {choice} on the clipboard: {copied[:200]}")
     page.click("#copy-link-button")
     page.locator("#action-status:not(:empty)").wait_for()
     # Sort buttons: newest first by default, oldest first on request, left of Copy.
@@ -608,6 +616,7 @@ def main():
             browser = p.chromium.launch()
             for scheme in ("light", "dark"):
                 context = browser.new_context(color_scheme=scheme, viewport={"width": 1280, "height": 900})
+                context.grant_permissions(["clipboard-read", "clipboard-write"], origin=f"http://127.0.0.1:{server.server_port}")
                 page = context.new_page()
                 page.clock.set_fixed_time(f"{TODAY}T12:00:00")
                 page.route("https://marincountygov.github.io/**", lambda r: r.fulfill(status=200, content_type="application/json", body="[]"))
