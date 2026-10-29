@@ -4,6 +4,7 @@ Changes to Marin Reach. The shell dependency is tracked separately by `platform.
 
 ## Unreleased
 
+- Copy on the list is a menu with Text, HTML and Markdown, placed after Copy link. Text pastes as rich text; HTML and Markdown copy the source. The app uses the shell that keeps line breaks in Markdown.
 - Toolbar and filter panel tidy-up (Marin App Shell 1.15.0): Copy, Link, CSV and RSS are icon-only buttons in one `.action-group` cluster; the text search is always visible at the end of the toolbar row instead of stacked in the filter panel; the panel is titled "Filter Engagements" with Reset beside the title; on narrow screens the filter button sits beside the tabs instead of on its own row; the buttons under each listing are one cluster.
 - Checkboxes are 24 px square. Shell 1.11.1 links `security.txt` and WCAG once each.
 - Accessibility review fixes: Stats fits at 320 px, chart text and grid follow the page colors in dark mode, per-listing controls have unique names, the RSS link answers Space and says it opens in a new tab, and Marin App Shell 1.10.1 raises form control borders to 3:1. See `docs/accessibility-review.md`.
