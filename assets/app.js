@@ -442,53 +442,31 @@
     $('copy-fallback-text').select();
   }
 
-  // Same execCommand technique as marin-mentions: it captures both HTML and plain text.
-  function copyRichText(html) {
-    const temp = document.createElement('div');
-    temp.contentEditable = 'true';
-    temp.style.position = 'fixed';
-    temp.style.left = '-9999px';
-    temp.innerHTML = html;
-    document.body.appendChild(temp);
-    const range = document.createRange();
-    range.selectNodeContents(temp);
-    const selection = window.getSelection();
-    selection.removeAllRanges();
-    selection.addRange(range);
-    const copied = document.execCommand('copy');
-    selection.removeAllRanges();
-    document.body.removeChild(temp);
-    return copied;
-  }
-
   const FALLBACK_MESSAGE = "Couldn't copy automatically \u2014 select the text below and copy it manually.";
 
-  // Returns true when copied; otherwise shows the manual-copy textarea.
-  function copyRichOrFallback(html, text) {
+  // Copies through the shell's marinCopyRich (clean HTML, no page styles). Resolves true when copied;
+  // otherwise shows the manual-copy textarea.
+  async function copyRichOrFallback(html, text) {
     $('copy-fallback').hidden = true;
-    try {
-      if (!copyRichText(html)) throw new Error('copy command failed');
-      return true;
-    } catch (err) {
-      showCopyFallback(text);
-      return false;
-    }
+    if (await marinCopyRich(text, html)) return true;
+    showCopyFallback(text);
+    return false;
   }
 
-  function copyList() {
+  async function copyList() {
     const items = exportRecords();
     if (!items.length) {
       say('No engagements to copy \u2014 adjust the filters first.');
       return;
     }
     const digest = S.buildDigest(items, S.describeFilters(app.state, app.filtered), app.state.sort);
-    say(copyRichOrFallback(digest.html, digest.text)
+    say((await copyRichOrFallback(digest.html, digest.text))
       ? 'Copied ' + S.plural(items.length, 'engagement') + ' to clipboard.' : FALLBACK_MESSAGE);
   }
 
-  function copyItem(record, button, status) {
+  async function copyItem(record, button, status) {
     const block = S.buildItemBlock(record);
-    if (copyRichOrFallback(block.html, block.text)) {
+    if (await copyRichOrFallback(block.html, block.text)) {
       button.classList.add('is-copied');
       window.clearTimeout(button.resetTimer);
       button.resetTimer = window.setTimeout(() => button.classList.remove('is-copied'), 1500);
@@ -499,26 +477,19 @@
   }
 
   // `target` is the status line next to the button that was used.
-  function copyLink(target) {
+  async function copyLink(target) {
     $('copy-fallback').hidden = true;
     const text = window.location.href;
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(text).then(() => say('Copied link to clipboard.', target))
-        .catch(() => { showCopyFallback(text); say(FALLBACK_MESSAGE, target); });
-      return;
+    if (await marinCopyText(text)) {
+      say('Copied link to clipboard.', target);
+    } else {
+      showCopyFallback(text);
+      say(FALLBACK_MESSAGE, target);
     }
-    say(copyRichOrFallback(text, text) ? 'Copied link to clipboard.' : FALLBACK_MESSAGE, target);
   }
 
-  function triggerDownload(blob, filename) {
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = filename;
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    URL.revokeObjectURL(url);
+  function triggerDownload(content, filename) {
+    marinDownload({ content, name: filename });
   }
 
   function downloadCsv() {
@@ -527,7 +498,7 @@
       say('No engagements to download \u2014 adjust the filters first.');
       return;
     }
-    triggerDownload(new Blob([S.toCsv(items, app.state.sort)], { type: 'text/csv;charset=utf-8' }), 'Marin Reach - ' + filenameDate() + '.csv');
+    triggerDownload(S.toCsv(items, app.state.sort), 'Marin Reach - ' + filenameDate() + '.csv');
     say('Downloaded ' + S.plural(items.length, 'engagement') + ' as CSV.');
   }
 
@@ -551,7 +522,7 @@
     return label.indexOf(title + '.') === 0 ? label.slice(title.length + 1).trim() : '';
   }
 
-  function copyStats() {
+  async function copyStats() {
     const stats = S.computeStats(app.filtered);
     const head = 'Marin Reach Stats';
     const filters = S.describeFilters(app.state, app.filtered);
@@ -570,7 +541,7 @@
         chartImage(canvas).toDataURL('image/png') + '" alt="' + title + '" width="' + canvas.clientWidth + '" height="' + canvas.clientHeight + '">';
     });
     html += blocks.join('<br><br>') + '</div>';
-    say(copyRichOrFallback(html, text.join('\n').trim()) ? 'Copied charts to clipboard.' : FALLBACK_MESSAGE);
+    say((await copyRichOrFallback(html, text.join('\n').trim())) ? 'Copied charts to clipboard.' : FALLBACK_MESSAGE);
   }
 
   // RSS: static feeds exist for all engagements and for each single project. With any other filter, search or
@@ -798,9 +769,9 @@
     body.append(h('p', { class: 'reach-map-count', text: '(' + S.plural(group.records.length, 'engagement') + ')' }));
     const copy = h('button', { type: 'button', class: 'action-button', 'aria-label': 'Copy location and its engagements: ' + group.name, title: 'Copy' }, [copyIcon()]);
     const status = h('p', { class: 'app-help-text mm-card__copy-status', role: 'status' });
-    copy.addEventListener('click', () => {
+    copy.addEventListener('click', async () => {
       const block = S.buildPlaceBlock(group);
-      say(copyRichOrFallback(block.html, block.text) ? 'Copied location to clipboard.' : FALLBACK_MESSAGE, status);
+      say((await copyRichOrFallback(block.html, block.text)) ? 'Copied location to clipboard.' : FALLBACK_MESSAGE, status);
     });
     body.append(h('div', { class: 'reach-map-actions' }, copy), status);
     const list = h('ul', { class: 'reach-map-events' });
