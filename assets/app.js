@@ -453,15 +453,29 @@
     return false;
   }
 
-  async function copyList() {
+  async function copyList(format = 'text') {
     const items = exportRecords();
     if (!items.length) {
       say('No engagements to copy \u2014 adjust the filters first.');
       return;
     }
     const digest = S.buildDigest(items, S.describeFilters(app.state, app.filtered), app.state.sort);
-    say((await copyRichOrFallback(digest.html, digest.text))
-      ? 'Copied ' + S.plural(items.length, 'engagement') + ' to clipboard.' : FALLBACK_MESSAGE);
+    if (format === 'text') {
+      say((await copyRichOrFallback(digest.html, digest.text))
+        ? 'Copied ' + S.plural(items.length, 'engagement') + ' to clipboard.' : FALLBACK_MESSAGE);
+      return;
+    }
+    // HTML and Markdown go out as the source itself; the Markdown is made from the same HTML as the rich text.
+    const holder = document.createElement('div');
+    holder.innerHTML = digest.html;
+    const source = format === 'html' ? digest.html : window.marinContentFormats(holder).markdown;
+    $('copy-fallback').hidden = true;
+    if (await marinCopyText(source)) {
+      say('Copied ' + S.plural(items.length, 'engagement') + ' to clipboard as ' + (format === 'html' ? 'HTML' : 'Markdown') + '.');
+    } else {
+      showCopyFallback(source);
+      say(FALLBACK_MESSAGE);
+    }
   }
 
   async function copyItem(record, button, status) {
@@ -926,7 +940,7 @@
     $('sort-group').hidden = !list;
     $('sort-newest').setAttribute('aria-pressed', String(app.state.sort === 'newest'));
     $('sort-oldest').setAttribute('aria-pressed', String(app.state.sort === 'oldest'));
-    $('copy-list-button').hidden = !list;
+    $('copy-list-menu').hidden = !list;
     $('download-data-button').hidden = !list;
     $('rss-feed-link').hidden = !(list && app.rssAvailable);
     $('copy-stats-button').hidden = view !== 'stats';
@@ -1042,7 +1056,10 @@
         renderView();
       });
     });
-    $('copy-list-button').addEventListener('click', copyList);
+    $('copy-list-menu').addEventListener('click', (event) => {
+      const choice = event.target.closest('[data-copy-list]');
+      if (choice) copyList(choice.dataset.copyList);
+    });
     $('copy-link-button').addEventListener('click', () => copyLink());
     $('cal-link').addEventListener('click', () => copyLink($('cal-status')));
     $('download-data-button').addEventListener('click', downloadCsv);
