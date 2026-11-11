@@ -1148,7 +1148,12 @@
     if (app.state.range !== 'month' && S.monthKey(app.anchor) === S.monthKey(todayISO())) app.anchor = todayISO();
     $('reach-loading').hidden = true;
     $('reach-app').hidden = false;
+    // A link from another site (?engagement=<id>) opens that engagement's details, as a click on it does.
+    // Read before update(), which rewrites the address to the filters alone.
+    const wanted = new URLSearchParams(window.location.search).get('engagement');
+    const linked = wanted && app.records.find((r) => r.id === wanted);
     update(false);
+    if (linked) openRecord(linked, null);
   }
 
   document.addEventListener('DOMContentLoaded', () => {
