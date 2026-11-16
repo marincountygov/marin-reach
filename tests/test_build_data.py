@@ -226,6 +226,33 @@ class DatasetTests(unittest.TestCase):
         records = build(event(organizer="PW"))
         self.assertIn("`PW`", bd.ambiguity_report(records, ALIASES))
 
+    def test_organization_names_come_from_marin_data(self):
+        r = build(event(organizer="OCE"), event("E2", organizer="Marin County Executive"))
+        self.assertEqual([x["agencies"] for x in r], [["Office of the County Executive"]] * 2)
+        self.assertEqual(sorted(x["raw"]["agencies"][0] for x in r), ["Marin County Executive", "OCE"])
+
+    def test_name_shared_by_two_organizations_is_flagged(self):
+        report = bd.ambiguity_report(build(event(organizer="Health and Human Services")), ALIASES)
+        self.assertIn("more than one County organization", report)
+
+    def test_agency_that_is_not_an_organization_is_flagged(self):
+        report = bd.ambiguity_report(build(event(organizer="Parks and Recreation Dept")), ALIASES)
+        self.assertIn("not a County organization name or alias", report)
+        self.assertNotIn("not a County organization", bd.ambiguity_report(build(event(organizer="D3")), ALIASES))
+
+    def test_local_alias_may_not_disagree_with_marin_data(self):
+        real = bd.ALIASES
+        import tempfile
+        with tempfile.TemporaryDirectory() as d:
+            bad = Path(d) / "aliases.json"
+            bad.write_text(json.dumps({"agencies": {"CDA": "Something Else"}}), encoding="utf-8")
+            bd.ALIASES = bad
+            try:
+                with self.assertRaises(bd.DataError):
+                    bd.load_aliases()
+            finally:
+                bd.ALIASES = real
+
 
 if __name__ == "__main__":
     unittest.main()

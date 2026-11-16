@@ -51,13 +51,13 @@ Properties are `PropertyValue` entries in the Event's `additionalProperty`. Othe
 2. Only `@type: "Event"` entries become records. Every `@id` reference in `about`, `organizer`, `sponsor` and `location` must resolve to a named entry in the graph, or the build fails with the event id.
 3. Events missing a project, `startDate` or a valid `Engagement Status` fail with the event id.
 4. Multi-value fields split on `;` only and are de-duplicated case-insensitively. Commas are never delimiters.
-5. Aliases come from `data/aliases.json` (case-insensitive match on the trimmed value) for `agencies`, `geographicAreas` and `partners`. Unlisted values pass through unchanged.
+5. Aliases are matched case-insensitively on the trimmed value, for `agencies`, `geographicAreas` and `partners`. Other names for County organizations come from `data/organizations-aliases.json`, a copy of the list in `marin-data` (add a name there, never here). `data/aliases.json` adds the rest: `D1` to `D5` and anything that is not a County organization. A local alias that disagrees with `marin-data` fails the build. Unlisted values pass through unchanged.
 6. The build fails on invalid JSON and on U+FFFD replacement characters, which indicate a damaged export.
-7. Uncertain values are reported in `data/ambiguities.md`, never merged: abbreviation-like values with no alias, and values that differ only by case, spacing or punctuation.
+7. Uncertain values are reported in `data/ambiguities.md`, never merged: abbreviation-like values with no alias, agency values that are not a County organization name or alias in `marin-data` (or are the name of more than one), and values that differ only by case, spacing or punctuation.
 
 ## Current aliases
 
-`CDA` = Community Development Agency. `OCE` = Office of the County Executive. `D1` to `D5` = District 1 to District 5 (agencies and geographic areas).
+`CDA` = Community Development Agency and `OCE` = Office of the County Executive, both from `marin-data`. `D1` to `D5` = District 1 to District 5 (agencies and geographic areas), in `data/aliases.json`.
 
 ## Stats definitions
 
