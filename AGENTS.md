@@ -9,7 +9,7 @@ Built from `marin-app-template` with the Marin App Shell vendored in `vendor/mar
 ## Rules
 
 - All views must derive from `applyFilters()` in `assets/selectors.js`. Never add a second filtering or counting path.
-- Aliases and display names are data (`data/aliases.json`), never UI conditionals. Never silently merge uncertain values; they go to `data/ambiguities.md`.
+- Aliases and display names are data, never UI conditionals. Names of County organizations come from `data/organizations-aliases.json`, a copy generated in `marin-data` (never edit it; run `python3 scripts/sync-orgs.py`). `data/aliases.json` holds only what is not a County organization (`D1` to `D5`, geographic areas, partners). Never silently merge uncertain values; they go to `data/ambiguities.md`.
 - Do not add fields, metadata features, notes, a database, authentication, AI, or new runtime dependencies without explicit approval. The approved map work covers Leaflet, Leaflet.markercluster, one tile host (OpenStreetMap) and the `place` field only. Open items live in `docs/decisions.md`.
 - Multi-value fields split on `;` only, because commas appear inside names.
 - Status values are `Planned`, `Canceled`, `Completed`, shown as entered (a past Planned date is not flagged).

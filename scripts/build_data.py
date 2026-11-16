@@ -21,6 +21,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 SOURCE = ROOT / "data" / "source" / "marin-reach-engagements.json"
 ALIASES = ROOT / "data" / "aliases.json"
+ORG_ALIASES = ROOT / "data" / "organizations-aliases.json"  # copy of marin-data organizations/aliases.json
 SCHEMA = ROOT / "data" / "schema" / "engagement.schema.json"
 OUTPUT = ROOT / "data" / "engagements.json"
 REPORT = ROOT / "data" / "ambiguities.md"
@@ -71,12 +72,27 @@ def split_list(value):
     return out
 
 
+def load_org_names():
+    """Other names, official names and ambiguous names of County organizations (from marin-data)."""
+    data = json.loads(ORG_ALIASES.read_text(encoding="utf-8"))
+    return data["aliases"], data["officialNames"], data["ambiguous"]
+
+
 def load_aliases():
     data = json.loads(ALIASES.read_text(encoding="utf-8"))
-    return {
+    aliases = {
         key: {k.casefold(): v for k, v in data.get(key, {}).items()}
         for key in ("agencies", "geographicAreas", "partners")
     }
+    # Organization names come from marin-data. A local alias may add to them but must not disagree with them.
+    org_aliases, _, _ = load_org_names()
+    for name, official in org_aliases.items():
+        key = name.casefold()
+        if key in aliases["agencies"] and aliases["agencies"][key] != official:
+            raise DataError(f"data/aliases.json: agency alias {name!r} means {aliases['agencies'][key]!r} here "
+                            f"but {official!r} in marin-data. Remove it here or change it in marin-data.")
+        aliases["agencies"][key] = official
+    return aliases
 
 
 def ref_names(node, field, nodes, where):
@@ -290,6 +306,13 @@ def ambiguity_report(records, aliases):
         for value in sorted(values):
             if re.fullmatch(r"[A-Z0-9]{2,5}", value) and value.casefold() not in alias_targets:
                 findings.append(f"- {label} `{value}` looks like an abbreviation with no alias entry.")
+    _, official_names, ambiguous = load_org_names()
+    known = {n.casefold() for n in official_names} | {v.casefold() for v in aliases["agencies"].values()}
+    for value in sorted({v for r in records for v in r["agencies"]}):
+        if value in ambiguous:
+            findings.append(f"- Agency/Department `{value}` is the name of more than one County organization in marin-data.")
+        elif value.casefold() not in known:
+            findings.append(f"- Agency/Department `{value}` is not a County organization name or alias in marin-data.")
     for field, label in (("agencies", "Agency/Department"), ("partners", "Partner"),
                          ("geographicAreas", "Geographic Area")):
         groups = {}
