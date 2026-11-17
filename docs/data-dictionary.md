@@ -29,7 +29,7 @@ Properties are `PropertyValue` entries in the Event's `additionalProperty`. Othe
 
 The Project filter lists every project in the shared list of projects, kept in `marin-data` (`projects/projects.json`). Each project with `"reach": true` is listed, A to Z, including projects that have no engagements yet; those show a count of 0. The dataset carries the list as `projects`, and each project has a feed in `feeds/`, empty until it has engagements. `data/projects.json` is a copy of the shared list. Never edit it here.
 
-To add a project, add it in `marin-data` with `"reach": true`, then run `python3 scripts/sync-projects.py` and `python3 scripts/build_data.py`. The daily update does both. An engagement whose project is not in the shared list fails the build.
+To add a project, add it in `marin-data` with `"reach": true`, then run `python3 scripts/sync-projects.py` and `python3 scripts/build_data.py`. The scheduled update does both. An engagement whose project is not in the shared list fails the build.
 
 ## Location
 
