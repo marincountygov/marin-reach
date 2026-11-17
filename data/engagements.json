@@ -1,6 +1,13 @@
 {
   "schemaVersion": 1,
   "source": "marin-reach-engagements.json",
+  "projects": [
+    "Community Outreach Events",
+    "El Nino",
+    "Envision Marin",
+    "Tam Junction Placemaking",
+    "West Marin Visioning"
+  ],
   "records": [
     {
       "id": "eng-ee84124a5f",

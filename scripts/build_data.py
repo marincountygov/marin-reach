@@ -21,6 +21,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 SOURCE = ROOT / "data" / "source" / "marin-reach-engagements.json"
 ALIASES = ROOT / "data" / "aliases.json"
+PROJECTS = ROOT / "data" / "projects.json"  # copy of marin-data projects/projects.json
 ORG_ALIASES = ROOT / "data" / "organizations-aliases.json"  # copy of marin-data organizations/aliases.json
 SCHEMA = ROOT / "data" / "schema" / "engagement.schema.json"
 OUTPUT = ROOT / "data" / "engagements.json"
@@ -70,6 +71,12 @@ def split_list(value):
             seen.add(part.casefold())
             out.append(part)
     return out
+
+
+def load_projects():
+    """Names of the projects Reach shows (the shared projects with reach: true), A to Z."""
+    data = json.loads(PROJECTS.read_text(encoding="utf-8"))
+    return sorted((p["name"] for p in data["projects"] if p.get("reach")), key=str.casefold)
 
 
 def load_org_names():
@@ -384,7 +391,7 @@ def feed_item(record, base):
     )
 
 
-def build_feeds(records):
+def build_feeds(records, projects=()):
     """Static RSS 2.0 feeds: feeds/all.xml plus feeds/project-<slug>.xml. Newest event date first."""
     base = site_url()
 
@@ -399,7 +406,8 @@ def build_feeds(records):
 
     feeds = {"all.xml": render("Marin Reach: all engagements", records)}
     slugs = {}
-    for project in sorted({r["project"] for r in records}):
+    # Every shared project gets a feed, even one with no engagements yet, so its feed address always exists.
+    for project in sorted({r["project"] for r in records} | set(projects)):
         slug = slugify(project)
         if slug in slugs:
             raise DataError(f"Projects {slugs[slug]!r} and {project!r} produce the same feed name {slug!r}")
@@ -412,11 +420,16 @@ def generate():
     text = SOURCE.read_text(encoding="utf-8")
     aliases = load_aliases()
     records = build_records(text, aliases)
-    dataset = {"schemaVersion": 1, "source": SOURCE.name, "records": records}
+    projects = load_projects()
+    unknown = sorted({r["project"] for r in records} - set(projects))
+    if unknown:
+        raise DataError(f"Project(s) not in the shared list of projects: {', '.join(unknown)}. "
+                        "Add them in marin-data (projects/projects.json) with reach: true, then run scripts/sync-projects.py.")
+    dataset = {"schemaVersion": 1, "source": SOURCE.name, "projects": projects, "records": records}
     schema = json.loads(SCHEMA.read_text(encoding="utf-8"))
     validate(dataset, schema, schema)
     return (json.dumps(dataset, indent=2, ensure_ascii=False) + "\n", ambiguity_report(records, aliases),
-            len(records), build_feeds(records))
+            len(records), build_feeds(records, projects))
 
 
 def main():

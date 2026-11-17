@@ -8,6 +8,7 @@
   "properties": {
     "schemaVersion": { "const": 1 },
     "source": { "type": "string" },
+    "projects": { "type": "array", "description": "Every project shown in the Project filter, A to Z, including projects with no engagements yet.", "uniqueItems": true, "items": { "type": "string", "minLength": 1 } },
     "records": { "type": "array", "items": { "$ref": "#/$defs/engagement" } }
   },
   "$defs": {

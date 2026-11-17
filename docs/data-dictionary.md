@@ -7,7 +7,7 @@ Source: `data/source/marin-reach-engagements.json`, a JSON-LD graph (`@graph`) o
 | JSON field | Source (on the Event) | Type | Required | Notes |
 |---|---|---|---|---|
 | `id` | none | string | Yes | `eng-` plus 10 hex characters of a SHA-1 over project, date, start time, event name, partners, agencies and location. A numeric suffix (`-2`, `-3`) breaks exact-duplicate collisions in file order. |
-| `project` | `about` | string | Yes | Name of the referenced project. Exactly one. |
+| `project` | `about` | string | Yes | Name of the referenced project. Exactly one. It must be a project in the shared list (see Projects below), or the build fails. |
 | `owner` | property `Owner` | string or null | No | |
 | `agencies` | `organizer` | string list | No | Name of the referenced organization. Aliased. |
 | `partners` | `sponsor` | string list | No | Name of the referenced organization. Aliased. |
@@ -24,6 +24,12 @@ Source: `data/source/marin-reach-engagements.json`, a JSON-LD graph (`@graph`) o
 | `raw` | none | object | No | Present only when an alias changed a label: `{ "agencies": ["CDA"] }` holds the source values. |
 
 Properties are `PropertyValue` entries in the Event's `additionalProperty`. Other properties (for example `Location verification`) and `eventStatus` are ignored. `Event Name`, times and `Location` are searchable or displayed but are not sidebar filters.
+
+## Projects
+
+The Project filter lists every project in the shared list of projects, kept in `marin-data` (`projects/projects.json`). Each project with `"reach": true` is listed, A to Z, including projects that have no engagements yet; those show a count of 0. The dataset carries the list as `projects`, and each project has a feed in `feeds/`, empty until it has engagements. `data/projects.json` is a copy of the shared list. Never edit it here.
+
+To add a project, add it in `marin-data` with `"reach": true`, then run `python3 scripts/sync-projects.py` and `python3 scripts/build_data.py`. The daily update does both. An engagement whose project is not in the shared list fails the build.
 
 ## Location
 
@@ -43,7 +49,7 @@ Properties are `PropertyValue` entries in the Event's `additionalProperty`. Othe
 
 ## Feeds
 
-`scripts/build_data.py` also writes static RSS 2.0 feeds: `feeds/all.xml` and `feeds/project-<slug>.xml` for each project, newest event date first. Items use the event date as `pubDate`, the record `id` as the GUID, and link to the app filtered by project. `--check` fails on missing, stale or extra feed files.
+`scripts/build_data.py` also writes static RSS 2.0 feeds: `feeds/all.xml` and `feeds/project-<slug>.xml` for each project in the shared list (empty until it has engagements), newest event date first. Items use the event date as `pubDate`, the record `id` as the GUID, and link to the app filtered by project. `--check` fails on missing, stale or extra feed files.
 
 ## Rules
 
