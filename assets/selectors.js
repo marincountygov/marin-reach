@@ -102,7 +102,9 @@
 
   // Options for one facet, derived from the data. Counts reflect every other
   // active filter but not this facet's own selection, so choices stay visible.
-  function facetOptions(records, state, facetKey) {
+  // `known` lists values a facet should offer even when no record has them yet,
+  // such as { project: [...] } from the dataset's project list. They show a count of 0.
+  function facetOptions(records, state, facetKey, known) {
     const facet = FACETS.filter((f) => f.key === facetKey)[0];
     const counts = new Map();
     records.forEach((r) => {
@@ -110,6 +112,7 @@
       facet.values(r).forEach((v) => counts.set(v, (counts.get(v) || 0) + 1));
     });
     records.forEach((r) => facet.values(r).forEach((v) => { if (!counts.has(v)) counts.set(v, 0); }));
+    ((known && known[facetKey]) || []).forEach((v) => { if (!counts.has(v)) counts.set(v, 0); });
     const options = Array.from(counts, (e) => ({ value: e[0], count: e[1] }));
     if (facetKey === 'status') {
       options.sort((a, b) => STATUS_ORDER.indexOf(a.value) - STATUS_ORDER.indexOf(b.value));

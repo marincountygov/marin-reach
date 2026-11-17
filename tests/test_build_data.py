@@ -222,6 +222,37 @@ class DatasetTests(unittest.TestCase):
         self.assertLess(feeds["all.xml"].index("E2"), feeds["all.xml"].index("E1"))
         self.assertIn("B &amp; C", feeds["project-b-c.xml"])
 
+    def test_a_shared_project_with_no_engagements_still_has_a_feed(self):
+        records = build(event("E1", start="2026-05-06"))
+        feeds = bd.build_feeds(records, ["P", "West Marin Visioning"])
+        self.assertEqual(sorted(feeds), ["all.xml", "project-p.xml", "project-west-marin-visioning.xml"])
+        self.assertEqual(feeds["project-west-marin-visioning.xml"].count("<item>"), 0)
+        self.assertIn("Marin Reach: West Marin Visioning", feeds["project-west-marin-visioning.xml"])
+        self.assertEqual(feeds["project-p.xml"].count("<item>"), 1)
+
+    def test_the_dataset_lists_every_shared_reach_project_and_only_those(self):
+        text, _, _, _ = bd.generate()
+        projects = json.loads(text)["projects"]
+        shared = json.loads(bd.PROJECTS.read_text(encoding="utf-8"))["projects"]
+        self.assertEqual(projects, sorted((p["name"] for p in shared if p.get("reach")), key=str.casefold))
+        self.assertIn("West Marin Visioning", projects)
+        self.assertNotIn("Weather Together", projects)  # a Links campaign that Reach does not show
+
+    def test_an_engagement_for_a_project_outside_the_shared_list_fails(self):
+        import tempfile
+        real = bd.PROJECTS
+        with tempfile.TemporaryDirectory() as d:
+            short = Path(d) / "projects.json"
+            short.write_text(json.dumps({"projects": [{"id": "envision-marin", "name": "Envision Marin", "reach": True}]}), encoding="utf-8")
+            bd.PROJECTS = short
+            try:
+                with self.assertRaises(bd.DataError) as caught:
+                    bd.generate()
+            finally:
+                bd.PROJECTS = real
+        self.assertIn("not in the shared list of projects", str(caught.exception))
+        self.assertIn("Tam Junction Placemaking", str(caught.exception))
+
     def test_abbreviation_without_alias_is_flagged_not_merged(self):
         records = build(event(organizer="PW"))
         self.assertIn("`PW`", bd.ambiguity_report(records, ALIASES))

@@ -41,6 +41,7 @@ Open `http://127.0.0.1:8765/`. Use HTTP rather than `file://`; the app fetches `
 
 ## Updating the data
 
+0. Projects are kept in `marin-data`, not here. A new project must be added there first (`projects/projects.json`, with `"reach": true`). Then run `python3 scripts/sync-projects.py`. The daily update does this too and pushes a `data-sync` branch. `data/projects.json` is a copy; never edit it.
 1. Edit `data/source/marin-reach-engagements.json` (JSON-LD, UTF-8): add or change Event entries, and the Project, Person, Organization and Place entries they point to.
 2. Run `python3 scripts/build_data.py`. It fails with the event id on invalid data.
 3. Read `data/ambiguities.md`; fix the source or add an alias in `data/aliases.json`.

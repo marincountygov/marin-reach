@@ -58,6 +58,27 @@ test('facet options omit blanks and count against other filters only', () => {
   assert.deepEqual(status.map((o) => o.count), [1, 1, 1]);
 });
 
+test('a facet also offers known values that no record has yet, with a count of 0', () => {
+  const st = S.emptyState();
+  const known = { project: ['Envision', 'West Marin Visioning', 'Outreach'] };
+  const projects = S.facetOptions(data, st, 'project', known);
+  assert.deepEqual(projects, [
+    { value: 'Envision', count: 2 },
+    { value: 'Outreach', count: 1 },
+    { value: 'West Marin Visioning', count: 0 },
+  ]);
+  // A known value that records already have is not listed twice.
+  assert.equal(projects.filter((o) => o.value === 'Envision').length, 1);
+  // Without a list, or for a facet the list does not name, nothing is added.
+  assert.deepEqual(S.facetOptions(data, st, 'project').map((o) => o.value), ['Envision', 'Outreach']);
+  assert.deepEqual(S.facetOptions(data, st, 'agency', known), S.facetOptions(data, st, 'agency'));
+  // The project stays offered while another filter hides all of its records, and an empty one is never counted.
+  st.facets.status = ['Completed'];
+  const filtered = S.facetOptions(data, st, 'project', known);
+  assert.ok(filtered.some((o) => o.value === 'West Marin Visioning' && o.count === 0));
+  assert.equal(S.applyFilters(data, Object.assign(S.emptyState(), { facets: Object.assign(S.emptyState().facets, { project: ['West Marin Visioning'] }) })).length, 0);
+});
+
 test('URL state round-trips and ignores invalid dates and views', () => {
   const st = S.emptyState();
   st.view = 'calendar';

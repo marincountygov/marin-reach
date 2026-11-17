@@ -12,6 +12,7 @@
 
   const app = {
     records: [],
+    known: {}, // values a filter offers even with no records yet, such as { project: [...] }
     state: S.emptyState(),
     filtered: [],
     anchor: '',
@@ -68,7 +69,7 @@
   function sanitizeState() {
     const st = app.state;
     S.FACETS.forEach((f) => {
-      const valid = new Set(S.facetOptions(app.records, S.emptyState(), f.key).map((o) => o.value));
+      const valid = new Set(S.facetOptions(app.records, S.emptyState(), f.key, app.known).map((o) => o.value));
       st.facets[f.key] = st.facets[f.key].filter((v, i, arr) => valid.has(v) && arr.indexOf(v) === i);
     });
     if (st.from && st.to && st.from > st.to) {
@@ -85,7 +86,7 @@
     host.textContent = '';
     app.facetInputs.clear();
     S.FACETS.forEach((facet) => {
-      const options = S.facetOptions(app.records, S.emptyState(), facet.key);
+      const options = S.facetOptions(app.records, S.emptyState(), facet.key, app.known);
       if (!options.length) return;
       const list = h('ul', { class: 'search-facet-list' });
       options.forEach((opt, i) => {
@@ -114,7 +115,7 @@
     $('filter-from').max = st.to || '';
     $('filter-to').min = st.from || '';
     S.FACETS.forEach((facet) => {
-      S.facetOptions(app.records, st, facet.key).forEach((opt) => {
+      S.facetOptions(app.records, st, facet.key, app.known).forEach((opt) => {
         const entry = app.facetInputs.get(facet.key + '\u0000' + opt.value);
         if (!entry) return;
         entry.input.checked = st.facets[facet.key].indexOf(opt.value) >= 0;
@@ -1140,6 +1141,7 @@
       return;
     }
     app.records = data.records;
+    app.known = { project: Array.isArray(data.projects) ? data.projects : [] };
     app.state = S.parseQuery(window.location.search);
     sanitizeState();
     buildFacets();
