@@ -9,7 +9,7 @@ See the [README](../README.md#run-locally). The app fetches `data/engagements.js
 ```bash
 python3 scripts/build_data.py            # regenerate data/engagements.json
 bash scripts/check.sh                    # security meta, template structure, data, Python and Node tests
-bash scripts/check.sh --browser          # also the Reach workflow and CSP browser tests
+bash scripts/check.sh --browser          # also the Reach workflow and CSP browser tests (GitHub runs this on every pull request)
 ```
 
 `tests/test_build_data.py` covers parsing, normalization, validation and the committed outputs. `tests/selectors.test.js` (Node's built-in runner) covers filtering, URL state, calendar grouping and date behavior, stats, the "Showing:" line, CSV and copy digests. `tests/browser_reach.py` exercises filters, view switching, calendar, dialog, stats, empty/error states, keyboard reachability, small screens and light/dark modes over HTTP under a project-site subpath. Browser tests need Playwright for Python and Chromium. When served from localhost, the shell requests its Accessibility score and Tech data from a local MarinOS server (`http://localhost:8935`), which the app's CSP blocks on purpose. The test ignores that console message. Check those two sections on the deployed app.

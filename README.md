@@ -37,7 +37,7 @@ Open `http://127.0.0.1:8765/`. Use HTTP rather than `file://`; the app fetches `
 | `python3 scripts/build_data.py` | Convert `data/source/marin-reach-engagements.json` to `data/engagements.json`, refresh `data/ambiguities.md`, and regenerate `feeds/*.xml` |
 | `python3 scripts/build_data.py --check` | Fail if the committed data files are out of date |
 | `bash scripts/check.sh` | Lint-level checks, data check, Python and Node unit tests |
-| `bash scripts/check.sh --browser` | Also runs the browser workflow and CSP tests (needs Playwright for Python and Chromium) |
+| `bash scripts/check.sh --browser` | Also runs the browser workflow and CSP tests. Needs Playwright for Python and Chromium: `python3 -m pip install -r tests/requirements.txt`, then `python3 -m playwright install chromium`. GitHub runs this on every pull request. |
 
 ## Updating the data
 
