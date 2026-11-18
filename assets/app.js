@@ -127,7 +127,7 @@
       if (badge) badge.textContent = st.facets[facet.key].length ? '(' + st.facets[facet.key].length + ' selected)' : '';
     });
     const n = S.activeFilterCount(st);
-    // The button is icon-only: the shell turns this count into its name ("Filters, N active").
+    // The button is icon-only: the shell turns this count into its name ("Filter, N active").
     $('filter-toggle').dataset.filterActive = String(n);
   }
 
