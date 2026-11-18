@@ -512,7 +512,7 @@ def run(base, page, problems):
     page.goto(base + "?status=Planned")
     page.wait_for_selector("#reach-app:not([hidden])")
     require(page.is_visible("#filter-toggle") and page.inner_text("#filter-toggle").strip() == "", "The Filters button shows an icon and no text")
-    page.wait_for_function("document.getElementById('filter-toggle').getAttribute('aria-label') === 'Filters, 1 active'", timeout=3000)  # the shell names the button from data-filter-active
+    page.wait_for_function("document.getElementById('filter-toggle').getAttribute('aria-label') === 'Filter, 1 active'", timeout=3000)  # the shell names the button from data-filter-active
     require(page.evaluate("document.querySelector('.search-side').firstElementChild.id") == "filter-toggle", "The button is first in the left column, above the filters")
     require(page.evaluate("getComputedStyle(document.getElementById('filter-toggle')).backgroundColor") != "rgba(0, 0, 0, 0)", "The button has a solid background")
     look = "el => { const c = getComputedStyle(el); return [c.borderTopWidth, c.borderTopColor, c.borderRadius, c.backgroundColor, c.color]; }"
