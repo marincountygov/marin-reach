@@ -17,7 +17,7 @@
     { key: 'agency', param: 'agency', label: 'Agency/Department', all: 'All agencies', values: (r) => r.agencies },
     { key: 'partner', param: 'partner', label: 'Partner', all: 'All partners', values: (r) => r.partners },
     { key: 'status', param: 'status', label: 'Status', all: 'All statuses', values: (r) => [r.status] },
-    { key: 'area', param: 'area', label: 'Location', all: 'All locations', values: (r) => r.geographicAreas },
+    { key: 'area', param: 'area', label: 'Place', all: 'All places', values: (r) => r.geographicAreas },
     { key: 'owner', param: 'owner', label: 'Owner', all: 'All owners', values: (r) => (r.owner ? [r.owner] : []) },
   ];
   const VIEWS = ['list', 'calendar', 'map', 'stats'];
@@ -391,11 +391,11 @@
     const parts = [];
     if (virtual) parts.push(virtual + ' virtual');
     if (noCoordinates) parts.push(noCoordinates + ' without coordinates');
-    if (noLocation) parts.push(noLocation + ' without a location');
+    if (noLocation) parts.push(noLocation + ' without a venue');
     const lines = [mapped + ' of ' + plural(records.length, 'engagement') + ' shown on map.'];
     if (points.unmapped.length) {
       lines.push(plural(points.unmapped.length, 'engagement') + ' ' + (points.unmapped.length === 1 ? 'does' : 'do') +
-        ' not have a map location (' + parts.join(', ') + ').');
+        ' not have a map point (' + parts.join(', ') + ').');
     }
     return { mapped: mapped, total: records.length, virtual: virtual, noCoordinates: noCoordinates,
       noLocation: noLocation, locations: points.locations.length, text: lines.join(' ') };
@@ -430,7 +430,7 @@
 
   // Accessible name for a cluster of map markers.
   function clusterLabel(locationCount, engagementCount) {
-    return plural(locationCount, 'location') + ', ' + plural(engagementCount, 'engagement') + '. Press Enter to zoom in.';
+    return plural(locationCount, 'venue') + ', ' + plural(engagementCount, 'engagement') + '. Press Enter to zoom in.';
   }
 
   // Accessible name for a marker: event and place for one engagement, place and count for several.
@@ -450,7 +450,7 @@
   }
 
   function toCsv(records, order) {
-    const header = ['Project', 'Event Name', 'Date', 'Start Time', 'End Time', 'Location',
+    const header = ['Project', 'Event Name', 'Date', 'Start Time', 'End Time', 'Venue',
       'Agency/Department', 'Partner', 'Audience', 'Type of Engagement', 'Geographic Area', 'Owner', 'Status'];
     const rows = sortByDate(records, order).map((r) => [r.project, r.eventName, r.date, r.startTime, r.endTime,
       r.location, r.agencies.join('; '), r.partners.join('; '), r.audience, r.type,
@@ -469,7 +469,7 @@
       ['Date', formatDate(r.date, true)],
       ['Project', r.eventName ? r.project : ''],
       ['Time', formatTimeRange(r)],
-      ['Location', r.location || ''],
+      ['Venue', r.location || ''],
       ['Agency/Department', join(r.agencies)],
       ['Partner', join(r.partners)],
       ['Audience', r.audience || ''],

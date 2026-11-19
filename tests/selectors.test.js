@@ -291,9 +291,9 @@ test('mapPoints handles zero and one record', () => {
 
 test('mapSummary counts only the records it is given', () => {
   assert.equal(S.mapSummary(mapData).text,
-    '3 of 6 engagements shown on map. 3 engagements do not have a map location (1 virtual, 1 without coordinates, 1 without a location).');
+    '3 of 6 engagements shown on map. 3 engagements do not have a map point (1 virtual, 1 without coordinates, 1 without a venue).');
   assert.equal(S.mapSummary([mapData[0]]).text, '1 of 1 engagement shown on map.');
-  assert.equal(S.mapSummary([mapData[3]]).text, '0 of 1 engagement shown on map. 1 engagement does not have a map location (1 virtual).');
+  assert.equal(S.mapSummary([mapData[3]]).text, '0 of 1 engagement shown on map. 1 engagement does not have a map point (1 virtual).');
   assert.equal(S.mapSummary([]).text, '0 of 0 engagements shown on map.');
 });
 
@@ -364,8 +364,8 @@ test('buildPlaceBlock has the place, its address, the count, and every engagemen
 });
 
 test('clusters are named by what they hold', () => {
-  assert.equal(S.clusterLabel(3, 7), '3 locations, 7 engagements. Press Enter to zoom in.');
-  assert.equal(S.clusterLabel(1, 1), '1 location, 1 engagement. Press Enter to zoom in.');
+  assert.equal(S.clusterLabel(3, 7), '3 venues, 7 engagements. Press Enter to zoom in.');
+  assert.equal(S.clusterLabel(1, 1), '1 venue, 1 engagement. Press Enter to zoom in.');
 });
 
 test('recordDirectionsUrl uses the address, falls back to coordinates, and is empty for virtual or unlocated records', () => {

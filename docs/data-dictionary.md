@@ -14,11 +14,11 @@ Source: `data/source/marin-reach-engagements.json`, a JSON-LD graph (`@graph`) o
 | `audience` | `audience.audienceType` | string or null | No | |
 | `eventName` | `name` | string or null | No | The calendar and list use the project as the label when blank. |
 | `type` | property `Type of Engagement` | string or null | No | Values as supplied; no new taxonomy. |
-| `geographicAreas` | property `Geographic Area` | string list | No | Aliased. Multi-value, split on `;`. Place names and other names (`D3`, `Town of Ross`) resolve through `data/places-aliases.json`, a copy of the list in `marin-data`. |
+| `geographicAreas` | property `Geographic Area` | string list | No | Aliased. Multi-value, split on `;`. Shown as the Place filter. Place names and other names (`D3`, `Town of Ross`) resolve through `data/places-aliases.json`, a copy of the list in `marin-data`. |
 | `date` | `startDate` | `YYYY-MM-DD` | Yes | The date as written, with no time-zone conversion. |
 | `startTime` | `startDate` | `HH:MM` 24-hour or null | No | The local time as written. A date-only `startDate` gives null. |
 | `endTime` | `endDate` | `HH:MM` or null | No | `endDate` must fall on the same day as `startDate`. |
-| `location` | `location` | string or null | No | Name of the referenced place. Display and search text only; address and coordinates are not carried over. |
+| `location` | `location` | string or null | No | Name of the referenced place, shown as the Venue. Display and search text only; address and coordinates are not carried over. |
 | `place` | `location` | object | No | See Location below. Absent when the event has no location. |
 | `status` | property `Engagement Status` | `Planned`, `Canceled`, `Completed` | Yes | Case-insensitive on import; any other value fails the build. |
 | `raw` | none | object | No | Present only when an alias changed a label: `{ "agencies": ["CDA"] }` holds the source values. |
