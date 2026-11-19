@@ -89,7 +89,7 @@ def run(base, page, problems):
     require(len(ordered) == total and ordered == sorted(ordered, reverse=True), f"List is not newest first: {shown}")
     require(page.locator("h1").count() == 1, "Expected one h1")
     require(page.locator("#facet-groups details > summary").evaluate_all("els => els.map(e => e.firstChild.textContent.trim())")
-            == ["Audience", "Type", "Project", "Agency/Department", "Partner", "Status", "Location", "Owner"],
+            == ["Audience", "Type", "Project", "Agency/Department", "Partner", "Status", "Place", "Owner"],
             "Facet groups differ from the requested names or order")
     require(page.locator("#facet-groups details[open]").count() == 0, "Filter dropdowns should start collapsed")
     require(not page.locator("input[name=project][value='El Nino']").is_visible(), "Options should be hidden until opened")
@@ -340,15 +340,15 @@ def run(base, page, problems):
     # Nearby locations group into clusters, so count every location a pin or a cluster stands for.
     def locations_on_map():
         pins = page.locator(".reach-pin").count()
-        grouped = page.locator(".reach-cluster").evaluate_all("els => els.map(e => e.querySelector('.visually-hidden').textContent.match(/(\\d+) locations?, /)[1])")
+        grouped = page.locator(".reach-cluster").evaluate_all("els => els.map(e => e.querySelector('.visually-hidden').textContent.match(/(\\d+) venues?, /)[1])")
         return pins + sum(int(n) for n in grouped)
     require(locations_on_map() == len(sites), f"Every distinct coordinate pair is a pin or inside a cluster: {locations_on_map()} vs {len(sites)}")
     require(page.is_hidden("#map-selection"), "Nothing is selected until a marker is chosen")
-    require(page.is_hidden("#map-clear"), "Clear shows only when a location is selected")
+    require(page.is_hidden("#map-clear"), "Clear shows only when a venue is selected")
     require(page.evaluate("document.getElementById('active-filters').nextElementSibling.id") == "map-status",
             "The map status sits directly below the Showing line")
     require(page.inner_text("#map-status").startswith(f"{len(mapped)} of {total} engagements shown on map."), page.inner_text("#map-status"))
-    require("do not have a map location" in page.inner_text("#map-status"), "Unmapped engagements are reported")
+    require("do not have a map point" in page.inner_text("#map-status"), "Unmapped engagements are reported")
     toolbar = [i for i in ("copy-list-button", "copy-link-button", "download-data-button", "rss-feed-link",
                            "copy-stats-button", "download-all-png-button") if page.is_visible("#" + i)]
     require(toolbar == ["copy-link-button"], f"Map toolbar: {toolbar}")
@@ -389,10 +389,10 @@ def run(base, page, problems):
     page.click("#map-clear")  # clears the pin chosen above, so the dropdown is back to its default
     options = page.locator("#map-places option")
     labels = options.all_inner_texts()
-    require(labels[0] == "All locations" and page.input_value("#map-places") == "", "The dropdown starts on All locations")
-    require(len(labels) == len(sites) + 1, "One option per marker location, plus All locations")
+    require(labels[0] == "All venues" and page.input_value("#map-places") == "", "The dropdown starts on All venues")
+    require(len(labels) == len(sites) + 1, "One option per marker venue, plus All venues")
     names = [re.sub(r" \(\d+\)$", "", label) for label in labels[1:]]
-    require(names == sorted(names, key=str.casefold), f"Locations are in alphabetical order: {names}")
+    require(names == sorted(names, key=str.casefold), f"Venues are in alphabetical order: {names}")
     page.focus("#map-places")
     page.select_option("#map-places", label="Mill Valley Community Center (3)")
     require("place=37.898796%2C-122.528346" in page.url and "view=map" in page.url, f"Selected place missing from URL: {page.url}")
@@ -406,7 +406,7 @@ def run(base, page, problems):
     require(page.locator("#map-selection-body a.directions-button").count() == 1, "One directions button for the location, not one per card")
     require(page.locator("#map-selection-body .reach-map-line").last.evaluate("e => e.nextElementSibling.querySelector('a.directions-button') !== null"), "Directions sit directly below the address")
     page.click("#map-selection-body .reach-map-actions button")
-    require(page.locator("#map-selection-body > p[role=status]").inner_text() == "Copied location to clipboard.", "Copy for a whole place")
+    require(page.locator("#map-selection-body > p[role=status]").inner_text() == "Copied venue to clipboard.", "Copy for a whole place")
     page.goto(page.url)
     page.wait_for_selector("#panel-map:not([hidden]) .leaflet-marker-icon")
     require(page.inner_text("#map-selection-title") == "Mill Valley Community Center", "The selected place did not restore from the URL")
@@ -485,7 +485,7 @@ def run(base, page, problems):
     page.wait_for_selector("#panel-map:not([hidden]) .leaflet-marker-icon")
     require(page.locator(".reach-cluster").count() >= 1, "Fifteen locations should cluster")
     names = page.locator(".reach-cluster").evaluate_all("els => els.map(e => [e.getAttribute('role'), e.tabIndex, e.textContent])")
-    require(all(n[0] == "button" and n[1] == 0 and "locations" in n[2] and "Press Enter to zoom in" in n[2] for n in names), f"Cluster names: {names}")
+    require(all(n[0] == "button" and n[1] == 0 and "venues" in n[2] and "Press Enter to zoom in" in n[2] for n in names), f"Cluster names: {names}")
     before = page.locator(".reach-pin").count()
     page.locator(".reach-cluster").first.focus()
     page.keyboard.press("Enter")

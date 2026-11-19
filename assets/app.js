@@ -624,7 +624,7 @@
     L.control.attribution({ prefix: '<a href="https://leafletjs.com">Leaflet</a>' }).addTo(map);
     L.tileLayer(TILES.url, { attribution: TILES.attribution, maxZoom: TILES.maxZoom }).addTo(map);
     map.getContainer().setAttribute('role', 'region');
-    map.getContainer().setAttribute('aria-label', 'Map of engagement locations');
+    map.getContainer().setAttribute('aria-label', 'Map of engagement venues');
     map.fitBounds(MARIN_EXTENT);
 
     // Markers sit in a cluster layer: nearby markers group into one numbered cluster until the map is zoomed in.
@@ -730,12 +730,12 @@
   }
 
   // The same places as the markers, as a dropdown in alphabetical order: an alternative to the map itself.
-  // "All locations" is the default and means nothing is selected.
+  // "All venues" is the default and means nothing is selected.
   function renderPlaces(locations) {
     const select = $('map-places');
     select.textContent = '';
     $('map-places-section').hidden = locations.length === 0;
-    select.append(h('option', { value: '', text: 'All locations' }));
+    select.append(h('option', { value: '', text: 'All venues' }));
     locations.slice().sort((a, b) => a.name.localeCompare(b.name)).forEach((group) => {
       select.append(h('option', { value: group.key, text: group.name + ' (' + group.records.length + ')' }));
     });
@@ -773,7 +773,7 @@
     section.hidden = !entry;
     $('map-clear').hidden = !entry;
     if (!entry) {
-      $('map-selection-title').textContent = 'Selected location';
+      $('map-selection-title').textContent = 'Selected venue';
       return;
     }
     const group = entry.group;
@@ -782,11 +782,11 @@
     const goThere = directionsButton(S.directionsUrl(group), group.name);
     if (goThere) body.append(h('div', { class: 'mm-card__copy-actions reach-map-directions' }, h('div', { class: 'action-group', role: 'group', 'aria-label': 'Actions: ' + group.name }, goThere)));
     body.append(h('p', { class: 'reach-map-count', text: '(' + S.plural(group.records.length, 'engagement') + ')' }));
-    const copy = h('button', { type: 'button', class: 'action-button', 'aria-label': 'Copy location and its engagements: ' + group.name, title: 'Copy' }, [copyIcon()]);
+    const copy = h('button', { type: 'button', class: 'action-button', 'aria-label': 'Copy venue and its engagements: ' + group.name, title: 'Copy' }, [copyIcon()]);
     const status = h('p', { class: 'app-help-text mm-card__copy-status', role: 'status' });
     copy.addEventListener('click', async () => {
       const block = S.buildPlaceBlock(group);
-      say((await copyRichOrFallback(block.html, block.text)) ? 'Copied location to clipboard.' : FALLBACK_MESSAGE, status);
+      say((await copyRichOrFallback(block.html, block.text)) ? 'Copied venue to clipboard.' : FALLBACK_MESSAGE, status);
     });
     body.append(h('div', { class: 'reach-map-actions' }, copy), status);
     const list = h('ul', { class: 'reach-map-events' });
