@@ -1,5 +1,5 @@
 {
-  "$comment": "Display-name aliases applied during import, for values that are not County organizations. Names of County organizations (such as CDA and OCE) come from data/organizations-aliases.json, a copy of marin-data. Keys are matched after trimming whitespace, case-insensitively. Unlisted values pass through unchanged. Add entries here, not in application code.",
+  "$comment": "Display-name aliases applied during import, for values that are not County organizations. Names of County organizations (such as CDA and OCE) come from data/organizations-aliases.json, and names of places (such as D3) from data/places-aliases.json, both copies of marin-data. Keys are matched after trimming whitespace, case-insensitively. Unlisted values pass through unchanged. Add entries here, not in application code.",
   "agencies": {
     "D1": "District 1",
     "D2": "District 2",
@@ -7,12 +7,6 @@
     "D4": "District 4",
     "D5": "District 5"
   },
-  "geographicAreas": {
-    "D1": "District 1",
-    "D2": "District 2",
-    "D3": "District 3",
-    "D4": "District 4",
-    "D5": "District 5"
-  },
+  "geographicAreas": {},
   "partners": {}
 }

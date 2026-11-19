@@ -14,7 +14,7 @@ Source: `data/source/marin-reach-engagements.json`, a JSON-LD graph (`@graph`) o
 | `audience` | `audience.audienceType` | string or null | No | |
 | `eventName` | `name` | string or null | No | The calendar and list use the project as the label when blank. |
 | `type` | property `Type of Engagement` | string or null | No | Values as supplied; no new taxonomy. |
-| `geographicAreas` | property `Geographic Area` | string list | No | Aliased. Multi-value, split on `;`. |
+| `geographicAreas` | property `Geographic Area` | string list | No | Aliased. Multi-value, split on `;`. Place names and other names (`D3`, `Town of Ross`) resolve through `data/places-aliases.json`, a copy of the list in `marin-data`. |
 | `date` | `startDate` | `YYYY-MM-DD` | Yes | The date as written, with no time-zone conversion. |
 | `startTime` | `startDate` | `HH:MM` 24-hour or null | No | The local time as written. A date-only `startDate` gives null. |
 | `endTime` | `endDate` | `HH:MM` or null | No | `endDate` must fall on the same day as `startDate`. |
@@ -40,7 +40,9 @@ To add a project, add it in `marin-data` with `"reach": true`, then run `python3
 | `kind` | `@type` | `virtual` for `VirtualLocation`, otherwise `physical`. |
 | `address` | `address` (`PostalAddress`) | Optional. Keys: `streetAddress`, `locality`, `region`, `postalCode`, `country`. Empty values are dropped. |
 | `geo` | `geo` (`GeoCoordinates`) | Optional. `{ latitude, longitude }`. |
+| `facility` | marin-data | Optional. The `@id` of the facility in marin-data when the venue name matches one. |
 
+- **Venues in marin-data:** a physical venue whose name matches a facility in `data/facilities.json` (a copy of marin-data) takes that facility's name, address and coordinates, and carries its `@id` as `facility`. marin-data wins when the source disagrees, and the difference is listed in `data/ambiguities.md`. A physical venue that is not a facility is kept as supplied and listed there too. Add the venue in marin-data, with who runs it.
 - **Optional:** an event may have a physical place with coordinates, a physical place without them, a virtual location, or no location. All are valid. Only the first can be placed on the map.
 - **Validation:** `latitude` is a number from -90 to 90, `longitude` a number from -180 to 180, and both must be present. Anything else fails the build with the event id. Coordinates are never guessed or looked up from addresses.
 - **Outside Marin County:** coordinates are kept as supplied and listed in `data/ambiguities.md` so someone can confirm them.
@@ -57,13 +59,13 @@ To add a project, add it in `marin-data` with `"reach": true`, then run `python3
 2. Only `@type: "Event"` entries become records. Every `@id` reference in `about`, `organizer`, `sponsor` and `location` must resolve to a named entry in the graph, or the build fails with the event id.
 3. Events missing a project, `startDate` or a valid `Engagement Status` fail with the event id.
 4. Multi-value fields split on `;` only and are de-duplicated case-insensitively. Commas are never delimiters.
-5. Aliases are matched case-insensitively on the trimmed value, for `agencies`, `geographicAreas` and `partners`. Other names for County organizations come from `data/organizations-aliases.json`, a copy of the list in `marin-data` (add a name there, never here). `data/aliases.json` adds the rest: `D1` to `D5` and anything that is not a County organization. A local alias that disagrees with `marin-data` fails the build. Unlisted values pass through unchanged.
+5. Aliases are matched case-insensitively on the trimmed value, for `agencies`, `geographicAreas` and `partners`. Other names for places come from `data/places-aliases.json`, also a copy of `marin-data`. Other names for County organizations come from `data/organizations-aliases.json`, a copy of the list in `marin-data` (add a name there, never here). `data/aliases.json` adds the rest: `D1` to `D5` as agencies and anything that is not a County organization. A local alias that disagrees with `marin-data` fails the build. Unlisted values pass through unchanged.
 6. The build fails on invalid JSON and on U+FFFD replacement characters, which indicate a damaged export.
 7. Uncertain values are reported in `data/ambiguities.md`, never merged: abbreviation-like values with no alias, agency values that are not a County organization name or alias in `marin-data` (or are the name of more than one), and values that differ only by case, spacing or punctuation.
 
 ## Current aliases
 
-`CDA` = Community Development Agency and `OCE` = Office of the County Executive, both from `marin-data`. `D1` to `D5` = District 1 to District 5 (agencies and geographic areas), in `data/aliases.json`.
+`CDA` = Community Development Agency and `OCE` = Office of the County Executive, both from `marin-data`. `D1` to `D5` = District 1 to District 5. As geographic areas they come from `marin-data`; as agencies they are in `data/aliases.json`.
 
 ## Stats definitions
 

@@ -23,6 +23,8 @@ SOURCE = ROOT / "data" / "source" / "marin-reach-engagements.json"
 ALIASES = ROOT / "data" / "aliases.json"
 PROJECTS = ROOT / "data" / "projects.json"  # copy of marin-data projects/projects.json
 ORG_ALIASES = ROOT / "data" / "organizations-aliases.json"  # copy of marin-data organizations/aliases.json
+FACILITIES = ROOT / "data" / "facilities.json"  # copy of marin-data organizations/facilities.json
+PLACE_ALIASES = ROOT / "data" / "places-aliases.json"  # copy of marin-data organizations/place-aliases.json
 SCHEMA = ROOT / "data" / "schema" / "engagement.schema.json"
 OUTPUT = ROOT / "data" / "engagements.json"
 REPORT = ROOT / "data" / "ambiguities.md"
@@ -85,6 +87,21 @@ def load_org_names():
     return data["aliases"], data["officialNames"], data["ambiguous"]
 
 
+def load_place_names():
+    """Other names, shown names and ambiguous names of places in Marin County (from marin-data)."""
+    data = json.loads(PLACE_ALIASES.read_text(encoding="utf-8"))
+    return data["aliases"], data["labels"], data["ambiguous"]
+
+
+def load_facilities():
+    """The facilities and venues in marin-data, by lower-case name and other name."""
+    by_name = {}
+    for facility in json.loads(FACILITIES.read_text(encoding="utf-8"))["facilities"]:
+        for name in [facility["name"]] + facility.get("alternateNames", []):
+            by_name[name.casefold()] = facility
+    return by_name
+
+
 def load_aliases():
     data = json.loads(ALIASES.read_text(encoding="utf-8"))
     aliases = {
@@ -99,6 +116,14 @@ def load_aliases():
             raise DataError(f"data/aliases.json: agency alias {name!r} means {aliases['agencies'][key]!r} here "
                             f"but {official!r} in marin-data. Remove it here or change it in marin-data.")
         aliases["agencies"][key] = official
+    # Place names come from marin-data too, with the same rule.
+    place_aliases, _, _ = load_place_names()
+    for name, shown in place_aliases.items():
+        key = name.casefold()
+        if key in aliases["geographicAreas"] and aliases["geographicAreas"][key] != shown:
+            raise DataError(f"data/aliases.json: geographic area alias {name!r} means {aliases['geographicAreas'][key]!r} here "
+                            f"but {shown!r} in marin-data. Remove it here or change it in marin-data.")
+        aliases["geographicAreas"][key] = shown
     return aliases
 
 
@@ -115,6 +140,8 @@ def ref_names(node, field, nodes, where):
     return names
 
 
+VENUE_DIFFERENCES = []  # filled while records are built, read by ambiguity_report
+FACILITY_NAMES = {}  # loaded from data/facilities.json when the build starts
 ADDRESS_FIELDS = {
     "streetAddress": "streetAddress", "addressLocality": "locality", "addressRegion": "region",
     "postalCode": "postalCode", "addressCountry": "country",
@@ -153,6 +180,20 @@ def build_place(target, where):
     return place
 
 
+def use_facility(place, facility, source_name, where):
+    """A venue that is a facility in marin-data takes its name, address and coordinates from there.
+
+    marin-data wins. Where the source says something different it is listed in data/ambiguities.md."""
+    for field in ("address", "geo"):
+        if field in place and place[field] != facility.get(field):
+            VENUE_DIFFERENCES.append(f"- Venue `{source_name}` ({where}): the source {field} differs from marin-data, which is used.")
+    place = {"kind": "physical", "facility": facility["id"]}
+    for field in ("address", "geo"):
+        if facility.get(field):
+            place[field] = facility[field]
+    return place
+
+
 def resolve_ref(node, field, nodes, where):
     """Single entity a field points at ({"@id": ...} or inline), or None when the field is absent."""
     ref = node.get(field)
@@ -175,6 +216,9 @@ def build_records(text, aliases):
     if not isinstance(graph, list):
         raise DataError("Source must be a JSON-LD document with an @graph array")
     nodes = {n["@id"]: n for n in graph if isinstance(n, dict) and "@id" in n}
+    FACILITY_NAMES.clear()
+    FACILITY_NAMES.update(load_facilities())
+    VENUE_DIFFERENCES.clear()
 
     records, used_ids = [], set()
     for node in graph:
@@ -207,6 +251,10 @@ def build_records(text, aliases):
         if location is not None and not location_name and location.get("@type") != "VirtualLocation":
             raise DataError(f"{where}: location has no name")
         place = build_place(location, where) if location is not None else None
+        facility = FACILITY_NAMES.get(location_name.casefold()) if place and place["kind"] == "physical" else None
+        if facility:
+            place = use_facility(place, facility, location_name, where)
+            location_name = facility["name"]
         source_values = {
             "agencies": ref_names(node, "organizer", nodes, where),
             "partners": ref_names(node, "sponsor", nodes, where),
@@ -328,6 +376,17 @@ def ambiguity_report(records, aliases):
         for variants in groups.values():
             if len(variants) > 1:
                 findings.append(f"- {label} values may be the same: {', '.join(f'`{v}`' for v in sorted(variants))}.")
+    _, place_labels, place_ambiguous = load_place_names()
+    known_places = {n.casefold() for n in place_labels}
+    for value in sorted({v for r in records for v in r["geographicAreas"]}):
+        if value in place_ambiguous:
+            findings.append(f"- Geographic Area `{value}` is the name of more than one place in marin-data.")
+        elif value.casefold() not in known_places:
+            findings.append(f"- Geographic Area `{value}` is not a place name or alias in marin-data.")
+    for venue in sorted({r["location"] for r in records
+                         if r.get("place", {}).get("kind") == "physical" and "facility" not in r["place"]}):
+        findings.append(f"- Venue `{venue}` is not a facility in marin-data.")
+    findings.extend(VENUE_DIFFERENCES)
     audiences = {r["audience"] for r in records if r["audience"]}
     groups = {}
     for value in audiences:

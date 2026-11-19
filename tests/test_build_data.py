@@ -145,6 +145,25 @@ class LocationTests(unittest.TestCase):
         self.assertEqual(r["place"]["address"]["streetAddress"], "1 Main St")
         self.assertEqual(r["place"]["address"]["locality"], "Mill Valley")
 
+    def test_venue_in_marin_data_takes_its_name_and_place_from_there(self):
+        r = build(event(location={"@type": "Place", "name": "marin county civic center"}))[0]
+        self.assertEqual(r["location"], "Marin County Civic Center")
+        self.assertEqual(r["place"]["facility"], "https://marincountygov.github.io/marin-data/id/facility/civic-center")
+        self.assertEqual(r["place"]["address"]["streetAddress"], "3501 Civic Center Dr")
+        self.assertIn("geo", r["place"])
+
+    def test_source_place_that_differs_from_marin_data_loses_and_is_flagged(self):
+        elsewhere = dict(place(37.0, -122.0), name="Marin Humane")
+        r = build(event(location=elsewhere))
+        self.assertEqual(r[0]["place"]["geo"], {"latitude": 38.06810087685585, "longitude": -122.53657216568276})
+        self.assertIn("differs from marin-data", bd.ambiguity_report(r, ALIASES))
+
+    def test_venue_that_is_not_in_marin_data_is_flagged_not_changed(self):
+        r = build(event(location=place(37.9, -122.5)))
+        self.assertEqual(r[0]["location"], "Hall")
+        self.assertNotIn("facility", r[0]["place"])
+        self.assertIn("`Hall` is not a facility in marin-data", bd.ambiguity_report(r, ALIASES))
+
     def test_physical_place_without_coordinates_is_valid(self):
         r = build(event(location=place()))[0]
         self.assertEqual(r["place"]["kind"], "physical")
@@ -277,6 +296,29 @@ class DatasetTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             bad = Path(d) / "aliases.json"
             bad.write_text(json.dumps({"agencies": {"CDA": "Something Else"}}), encoding="utf-8")
+            bd.ALIASES = bad
+            try:
+                with self.assertRaises(bd.DataError):
+                    bd.load_aliases()
+            finally:
+                bd.ALIASES = real
+
+    def test_place_names_come_from_marin_data(self):
+        r = build(event(Geographic_Area="D3; Marin District 4; Town of Ross; City of San Rafael"))[0]
+        self.assertEqual(r["geographicAreas"], ["District 3", "District 4", "Ross", "San Rafael"])
+        self.assertEqual(r["raw"]["geographicAreas"], ["D3", "Marin District 4", "Town of Ross", "City of San Rafael"])
+
+    def test_geographic_area_that_is_not_a_place_is_flagged(self):
+        report = bd.ambiguity_report(build(event(Geographic_Area="Atlantis")), ALIASES)
+        self.assertIn("`Atlantis` is not a place name or alias", report)
+        self.assertNotIn("not a place name", bd.ambiguity_report(build(event(Geographic_Area="D3; Novato")), ALIASES))
+
+    def test_local_area_alias_may_not_disagree_with_marin_data(self):
+        real = bd.ALIASES
+        import tempfile
+        with tempfile.TemporaryDirectory() as d:
+            bad = Path(d) / "aliases.json"
+            bad.write_text(json.dumps({"geographicAreas": {"D3": "District 4"}}), encoding="utf-8")
             bd.ALIASES = bad
             try:
                 with self.assertRaises(bd.DataError):
