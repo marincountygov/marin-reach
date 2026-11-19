@@ -19,6 +19,7 @@
       "additionalProperties": false,
       "properties": {
         "kind": { "enum": ["physical", "virtual"] },
+        "facility": { "type": "string", "format": "iri", "description": "The facility in marin-data this venue is, when it is one." },
         "address": {
           "type": "object",
           "additionalProperties": false,
