@@ -76,11 +76,12 @@
 
   // --- filters ---
 
-  // The column offers each filter's choices from the data (the dataset's own project list included), and shows
-  // each choice's count, which leaves out that filter's own selection so its other choices stay visible.
+  // The column offers each filter's choices from the data (the dataset's own project list included). It also does
+  // the matching and the counting: filters.json names the record field each filter looks at and the fields the
+  // search reads.
   function offerOptions() {
     S.FACETS.forEach((facet) => {
-      app.column.setOptions(facet.key, S.facetOptions(app.records, S.emptyState(), facet.key, app.known).map((opt) => ({ value: opt.value, label: opt.value, count: opt.count })));
+      app.column.setOptions(facet.key, S.facetValues(app.records, facet.key, app.known).map((value) => ({ value, label: value })));
     });
     readColumn();
   }
@@ -94,12 +95,10 @@
     S.FACETS.forEach((facet) => { st.facets[facet.key] = held.groups[facet.key]; });
   }
 
+  // Each choice shows how many engagements it would match; the count leaves out its own filter, so its other
+  // choices stay visible.
   function syncControls() {
-    S.FACETS.forEach((facet) => {
-      const counts = {};
-      S.facetOptions(app.records, app.state, facet.key, app.known).forEach((opt) => { counts[opt.value] = opt.count; });
-      app.column.setCounts(facet.key, counts);
-    });
+    app.column.updateCounts(app.records);
   }
 
   // --- filters panel ---
@@ -926,7 +925,7 @@
 
   function update(focusSummary) {
     clearActionStatus();
-    app.filtered = S.applyFilters(app.records, app.state);
+    app.filtered = app.column.filter(app.records);
     app.shown = PAGE_SIZE;
     // In month range, jump to a month that has results if the current one is empty. Day and week
     // ranges stay where the person put them.
@@ -937,7 +936,8 @@
     writeUrl();
     syncControls();
     updateRssLink();
-    $('active-filters').textContent = 'Showing: ' + S.describeFilters(app.state, app.filtered);
+    // The Showing line is the one count: the column announces it, and offers Reset when nothing matches.
+    app.column.setResults(app.filtered.length, 'Showing: ' + S.describeFilters(app.state, app.filtered));
     renderView();
     if (focusSummary) $('active-filters').focus();
   }
@@ -1085,7 +1085,7 @@
       else app.column.addEventListener('marin-filter-ready', resolve, { once: true });
     });
     offerOptions();
-    app.filtered = S.applyFilters(app.records, app.state);
+    app.filtered = app.column.filter(app.records);
     app.anchor = S.initialMonth(app.filtered, todayISO()) + '-01';
     if (app.state.range !== 'month' && S.monthKey(app.anchor) === S.monthKey(todayISO())) app.anchor = todayISO();
     $('reach-loading').hidden = true;

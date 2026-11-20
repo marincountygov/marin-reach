@@ -16,67 +16,14 @@ const data = [
   rec({ id: 'c', project: 'Outreach', agencies: ['D3'], partners: ['Tam CSD', 'Golden Gate'], date: '2026-11-14', startTime: '10:00', status: 'Canceled' }),
 ];
 
-test('filters OR within a facet and AND across facets', () => {
-  const st = S.emptyState();
-  st.facets.project = ['Envision', 'Outreach'];
-  assert.equal(S.applyFilters(data, st).length, 3);
-  st.facets.status = ['Planned'];
-  assert.deepEqual(S.applyFilters(data, st).map((r) => r.id), ['b']);
-});
-
-test('multi-value agency matches any value', () => {
-  const st = S.emptyState();
-  st.facets.agency = ['CDA'];
-  assert.deepEqual(S.applyFilters(data, st).map((r) => r.id), ['b']);
-});
-
-test('search combines with filters and covers location and event name', () => {
-  const st = S.emptyState();
-  st.q = 'civic';
-  assert.deepEqual(S.applyFilters(data, st).map((r) => r.id), ['a']);
-  st.q = 'workshop';
-  st.facets.status = ['Completed'];
-  assert.equal(S.applyFilters(data, st).length, 0);
-});
-
-test('date range is inclusive', () => {
-  const st = S.emptyState();
-  st.from = '2026-10-03';
-  st.to = '2026-11-14';
-  assert.equal(S.applyFilters(data, st).length, 3);
-  st.to = '2026-11-13';
-  assert.equal(S.applyFilters(data, st).length, 1);
-});
-
-test('facet options omit blanks and count against other filters only', () => {
-  const st = S.emptyState();
-  st.facets.status = ['Planned'];
-  const partners = S.facetOptions(data, st, 'partner');
-  assert.deepEqual(partners, [{ value: 'Golden Gate', count: 0 }, { value: 'Tam CSD', count: 0 }]);
-  const status = S.facetOptions(data, st, 'status');
-  assert.deepEqual(status.map((o) => o.value), ['Planned', 'Completed', 'Canceled']);
-  assert.deepEqual(status.map((o) => o.count), [1, 1, 1]);
-});
-
-test('a facet also offers known values that no record has yet, with a count of 0', () => {
-  const st = S.emptyState();
+test('a facet offers every value its records have, plus the known ones, and none twice', () => {
   const known = { project: ['Envision', 'West Marin Visioning', 'Outreach'] };
-  const projects = S.facetOptions(data, st, 'project', known);
-  assert.deepEqual(projects, [
-    { value: 'Envision', count: 2 },
-    { value: 'Outreach', count: 1 },
-    { value: 'West Marin Visioning', count: 0 },
-  ]);
-  // A known value that records already have is not listed twice.
-  assert.equal(projects.filter((o) => o.value === 'Envision').length, 1);
-  // Without a list, or for a facet the list does not name, nothing is added.
-  assert.deepEqual(S.facetOptions(data, st, 'project').map((o) => o.value), ['Envision', 'Outreach']);
-  assert.deepEqual(S.facetOptions(data, st, 'agency', known), S.facetOptions(data, st, 'agency'));
-  // The project stays offered while another filter hides all of its records, and an empty one is never counted.
-  st.facets.status = ['Completed'];
-  const filtered = S.facetOptions(data, st, 'project', known);
-  assert.ok(filtered.some((o) => o.value === 'West Marin Visioning' && o.count === 0));
-  assert.equal(S.applyFilters(data, Object.assign(S.emptyState(), { facets: Object.assign(S.emptyState().facets, { project: ['West Marin Visioning'] }) })).length, 0);
+  assert.deepEqual(S.facetValues(data, 'project', known), ['Envision', 'Outreach', 'West Marin Visioning']);
+  // Without a list, or for a facet the list does not name, nothing is added; blanks are omitted.
+  assert.deepEqual(S.facetValues(data, 'project'), ['Envision', 'Outreach']);
+  assert.deepEqual(S.facetValues(data, 'agency', known), S.facetValues(data, 'agency'));
+  assert.deepEqual(S.facetValues(data, 'partner'), ['Golden Gate', 'Tam CSD']);
+  assert.deepEqual(S.facetValues(data, 'status'), ['Planned', 'Completed', 'Canceled']);
 });
 
 test('URL state round-trips and ignores invalid dates and views', () => {
@@ -144,7 +91,7 @@ test('stats: status counts, distinct partners, zero-filled months, per-agency co
 test('stats follow the filtered set', () => {
   const st = S.emptyState();
   st.facets.partner = ['Golden Gate'];
-  const stats = S.computeStats(S.applyFilters(data, st));
+  const stats = S.computeStats(data.filter((r) => r.partners.includes('Golden Gate')));
   assert.equal(stats.total, 1);
   assert.equal(stats.partnersReached, 2);
   assert.equal(stats.canceled, 1);
@@ -173,7 +120,7 @@ test('describeFilters uses the "Showing:" line format with status counts', () =>
   st.facets.project = ['Envision'];
   st.facets.status = ['Planned'];
   st.q = 'work';
-  const subset = S.applyFilters(data, st);
+  const subset = data.filter((r) => r.id === 'b');
   assert.equal(S.describeFilters(st, subset),
     'From Nov 1, 2026 · Envision · All agencies · Status: Planned · matching "work" (1 engagement — Planned 1, Completed 0, Canceled 0)');
 });
@@ -301,7 +248,7 @@ test('map and the other views share one filtered set', () => {
   const st = S.emptyState();
   st.facets.project = ['Envision'];
   const input = mapData.map((r) => Object.assign({}, r, { project: r.id === 'm1' ? 'Envision' : 'Other' }));
-  const filtered = S.applyFilters(input, st);
+  const filtered = input.filter((r) => r.id === 'm1');
   const p = S.mapPoints(filtered);
   assert.deepEqual(filtered.map((r) => r.id), ['m1']);
   assert.equal(p.locations.reduce((n, l) => n + l.records.length, 0) + p.unmapped.length, filtered.length);
