@@ -1,6 +1,6 @@
 // Pure data selectors shared by the List, Calendar, Map, and Stats views.
 // No DOM access: the browser exposes this as window.ReachSelectors and Node
-// tests load it with require(). All views filter through applyFilters().
+// tests load it with require(). The filter column (filters.json) matches and counts; every view uses the one filtered set it returns.
 (function (root, factory) {
   if (typeof module === 'object' && module.exports) module.exports = factory();
   else root.ReachSelectors = factory();
@@ -70,56 +70,16 @@
     return params.toString();
   }
 
-  function activeFilterCount(state) {
-    let n = (state.q ? 1 : 0) + (state.from || state.to ? 1 : 0);
-    FACETS.forEach((f) => { n += state.facets[f.key].length; });
-    return n;
-  }
-
-  function searchText(r) {
-    return [r.eventName, r.project, r.partners.join(' '), r.agencies.join(' '),
-      r.geographicAreas.join(' '), r.location].filter(Boolean).join(' ').toLowerCase();
-  }
-
-  function matches(r, state, skipFacet) {
-    const q = state.q.toLowerCase();
-    if (q && !q.split(/\s+/).every((word) => searchText(r).indexOf(word) >= 0)) return false;
-    if (state.from && r.date < state.from) return false;
-    if (state.to && r.date > state.to) return false;
-    for (let i = 0; i < FACETS.length; i++) {
-      const f = FACETS[i];
-      const selected = state.facets[f.key];
-      if (f.key === skipFacet || !selected.length) continue;
-      const values = f.values(r);
-      if (!selected.some((s) => values.indexOf(s) >= 0)) return false;
-    }
-    return true;
-  }
-
-  function applyFilters(records, state) {
-    return records.filter((r) => matches(r, state, null));
-  }
-
-  // Options for one facet, derived from the data. Counts reflect every other
-  // active filter but not this facet's own selection, so choices stay visible.
-  // `known` lists values a facet should offer even when no record has them yet,
-  // such as { project: [...] } from the dataset's project list. They show a count of 0.
-  function facetOptions(records, state, facetKey, known) {
+  // The values one filter offers, from the data: every value a record has, plus any the dataset lists even
+  // when no record has them yet (such as { project: [...] } from the dataset's project list).
+  function facetValues(records, facetKey, known) {
     const facet = FACETS.filter((f) => f.key === facetKey)[0];
-    const counts = new Map();
-    records.forEach((r) => {
-      if (!matches(r, state, facetKey)) return;
-      facet.values(r).forEach((v) => counts.set(v, (counts.get(v) || 0) + 1));
-    });
-    records.forEach((r) => facet.values(r).forEach((v) => { if (!counts.has(v)) counts.set(v, 0); }));
-    ((known && known[facetKey]) || []).forEach((v) => { if (!counts.has(v)) counts.set(v, 0); });
-    const options = Array.from(counts, (e) => ({ value: e[0], count: e[1] }));
-    if (facetKey === 'status') {
-      options.sort((a, b) => STATUS_ORDER.indexOf(a.value) - STATUS_ORDER.indexOf(b.value));
-    } else {
-      options.sort((a, b) => a.value.localeCompare(b.value));
-    }
-    return options;
+    const values = new Set();
+    records.forEach((r) => facet.values(r).forEach((v) => values.add(v)));
+    ((known && known[facetKey]) || []).forEach((v) => values.add(v));
+    const list = Array.from(values);
+    if (facetKey === 'status') return list.sort((a, b) => STATUS_ORDER.indexOf(a) - STATUS_ORDER.indexOf(b));
+    return list.sort((a, b) => a.localeCompare(b));
   }
 
   function compareRecords(a, b) {
@@ -502,8 +462,8 @@
   }
 
   return {
-    FACETS, VIEWS, RANGES, addDays, weekStart, weekDays, rangeBounds, shiftAnchor, calendarTitle, emptyState, parseQuery, serializeState, activeFilterCount, applyFilters,
-    facetOptions, sortRecords, sortNewestFirst, sortByDate, SORTS, label, groupByDate, monthGrid, monthKey, shiftMonth, initialMonth,
+    FACETS, VIEWS, RANGES, addDays, weekStart, weekDays, rangeBounds, shiftAnchor, calendarTitle, emptyState, parseQuery, serializeState,
+    facetValues, sortRecords, sortNewestFirst, sortByDate, SORTS, label, groupByDate, monthGrid, monthKey, shiftMonth, initialMonth,
     computeStats, formatTime, formatTimeRange, toISO, parseISO, formatDate, monthTitle, plural,
     statusCounts, describeFilters, slugify, formatAddress, placeKey, mapPoints, mapSummary, clusterLabel, directionsUrl, recordDirectionsUrl, buildPlaceBlock, markerLabel, toCsv, detailPairs, buildItemBlock, buildDigest, csvField,
   };
