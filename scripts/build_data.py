@@ -483,7 +483,7 @@ def generate():
     unknown = sorted({r["project"] for r in records} - set(projects))
     if unknown:
         raise DataError(f"Project(s) not in the shared list of projects: {', '.join(unknown)}. "
-                        "Add them in marin-data (projects/projects.json) with reach: true, then run scripts/sync-projects.py.")
+                        "Add them in marin-data (projects/projects.json) with reach: true, then run ../marin-data/scripts/sync_copies.py.")
     dataset = {"schemaVersion": 1, "source": SOURCE.name, "projects": projects, "records": records}
     schema = json.loads(SCHEMA.read_text(encoding="utf-8"))
     validate(dataset, schema, schema)
