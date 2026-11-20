@@ -56,29 +56,7 @@
         <div id="reach-app" hidden>
 
           <form id="filters" class="search-layout" aria-label="Filter">
-            <div class="search-side">
-              <button type="button" id="filter-toggle" class="filter-toggle" data-filter-toggle="filters" aria-controls="filter-panel"></button>
-            <aside id="filter-panel" class="search-sidebar" aria-labelledby="filter-panel-title" data-open="false">
-              <div class="search-panel-header">
-                <h2 class="search-panel-title" id="filter-panel-title">Filter</h2>
-                <button type="button" class="action-button" id="reset-filters-button" aria-label="Reset filters" title="Reset filters"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg></button>
-              </div>
-
-              <fieldset class="search-facet-group" id="date-range">
-                <legend class="visually-hidden">Date</legend>
-                <div class="search-input-field">
-                  <label for="filter-from">From</label>
-                  <input type="date" id="filter-from" name="from">
-                </div>
-                <div class="search-input-field">
-                  <label for="filter-to">To</label>
-                  <input type="date" id="filter-to" name="to">
-                </div>
-              </fieldset>
-
-              <div id="facet-groups"></div>
-            </aside>
-            </div>
+            <div class="search-side" data-filter-column="filters.json" data-filter-name="filters"></div>
 
             <div class="search-results">
               <div class="tab-list" id="view-tab-row">
@@ -116,10 +94,6 @@
                   </div>
                   <button type="button" class="action-button" id="download-data-button" aria-label="Download CSV" title="Download CSV"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15V3"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/></svg></button>
                   <a role="button" class="action-button" id="rss-feed-link" target="_blank" rel="noreferrer" aria-label="RSS feed (opens in a new tab)" title="RSS feed"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11a9 9 0 0 1 9 9"/><path d="M4 4a16 16 0 0 1 16 16"/><circle cx="5" cy="19" r="1"/></svg></a>
-                </div>
-                <div class="action-search" role="search" aria-label="Search engagements">
-                  <label class="visually-hidden" for="filter-search">Search engagements</label>
-                  <input type="search" id="filter-search" name="search" placeholder="Search engagements&hellip;" autocomplete="off">
                 </div>
               </div>
               <p class="app-help-text" id="action-status" role="status"></p>

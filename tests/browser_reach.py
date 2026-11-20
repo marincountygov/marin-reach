@@ -38,12 +38,15 @@ class Handler(SimpleHTTPRequestHandler):
         pass
 
 
+RESET = "#filters-filter-panel .search-panel-header .action-button"
+
+
 def summary(page):
     return page.inner_text("#active-filters")
 
 
 def open_facet(page, key):
-    details = page.locator(f"#facet-groups details[data-facet={key}]")
+    details = page.locator(f"#{key}-facet details")
     if details.get_attribute("open") is None:
         details.locator("summary").click()
 
@@ -81,22 +84,22 @@ def run(base, page, problems):
     require(underlined == 0, "Underlined text that is not a link")
     require(page.locator("#start > p").count() == 0, "No intro text belongs on the main page")
     require(page.locator(".search-input-field .app-help-text").count() == 0, "No help text under search")
-    require(page.locator("#reset-filters-button").is_visible(), "Reset button missing")
+    require(page.locator(RESET).is_visible(), "Reset button missing")
     require(page.locator("#record-list > li").count() == total, "List does not show every record")
     dates = page.locator("#record-list > li time, #record-list > li dd:nth-of-type(1)").all_inner_texts()
     shown = [d for d in dates if re.match(r"^[A-Z][a-z]{2}, [A-Z][a-z]{2} \d+, \d{4}$", d)]
     ordered = [datetime.strptime(d, "%a, %b %d, %Y") for d in shown]
     require(len(ordered) == total and ordered == sorted(ordered, reverse=True), f"List is not newest first: {shown}")
     require(page.locator("h1").count() == 1, "Expected one h1")
-    require(page.locator("#facet-groups details > summary").evaluate_all("els => els.map(e => e.firstChild.textContent.trim())")
-            == ["Audience", "Type", "Project", "Agency/Department", "Partner", "Status", "Place", "Owner"],
+    require(page.locator("#filters fieldset:not([hidden]) legend").evaluate_all("els => els.map(e => e.textContent.trim())")
+            == ["Dates", "Audiences", "Types", "Projects", "Agencies", "Partners", "Statuses", "Places", "Owners"],
             "Facet groups differ from the requested names or order")
-    require(page.locator("#facet-groups details[open]").count() == 0, "Filter dropdowns should start collapsed")
+    require(page.locator("#filters fieldset details[open]").count() == 0, "Filter dropdowns should start collapsed")
     require(not page.locator("input[name=project][value='El Nino']").is_visible(), "Options should be hidden until opened")
-    page.click("#facet-groups details[data-facet=project] > summary")
+    page.click("#project-facet details > summary")
     require(page.locator("input[name=project][value='El Nino']").is_visible(), "Dropdown did not open")
-    require(page.locator("#date-range legend").inner_text() == "Date", "Date range missing")
-    require(page.locator("#filters fieldset legend").first.inner_text() == "Date", "Date should be the first filter")
+    require(page.locator("#date-facet legend").inner_text() == "Dates", "Date range missing")
+    require(page.locator("#filters fieldset legend").first.inner_text() == "Dates", "Dates should be the first filter")
 
     # Multi-select: OR within a facet, AND across facets, URL state.
     page.check("input[name=project][value='Envision Marin']")
@@ -104,19 +107,30 @@ def run(base, page, problems):
     require(count(page) == 7, "OR within a facet failed")
     open_facet(page, "status")
     page.check("input[name=status][value=Planned]")
-    require(page.url.endswith("?project=Envision+Marin&project=El+Nino&status=Planned"), f"URL state: {page.url}")
-    require(page.locator("[data-facet-count=project]").inner_text() == "(2 selected)", "Selected count missing")
-    require(page.locator("#facet-groups details[data-facet=project]").get_attribute("open") is not None, "Dropdown closed itself")
-    require("Envision Marin, El Nino" in summary(page) and "Status: Planned" in summary(page), summary(page))
+    require(page.url.endswith("?project=El+Nino&project=Envision+Marin&status=Planned"), f"URL state: {page.url}")
+    require(page.locator("#project-summary").inner_text() == "2 selected", "Selected count missing")
+    require(page.locator("#project-facet details").get_attribute("open") is not None, "Dropdown closed itself")
+    require("El Nino, Envision Marin" in summary(page) and "Status: Planned" in summary(page), summary(page))
 
     # Date range, then switch views without losing state.
-    page.fill("#filter-from", "2026-11-13")
-    page.dispatch_event("#filter-from", "change")
+    page.fill("#filters-filter-panel-date-from", "2026-11-13")
+    page.dispatch_event("#filters-filter-panel-date-from", "change")
     require(count(page) == 4, "Date range failed")
     for view in ("calendar", "stats", "list"):
         page.click(f"#view-tabs [data-view={view}]")
         require("from=2026-11-13" in page.url and "status=Planned" in page.url, f"State lost in {view}")
         require(count(page) == 4, f"Count changed in {view}")
+
+    # The column is the shell's: search comes first inside it (not in the toolbar), with no placeholder, and a range
+    # that ends before it starts is not applied and says so.
+    require(page.locator("#filters-filter-panel #filter-search").count() == 1 and page.locator("#results-toolbar #filter-search").count() == 0, "Search is in the filter column, not the toolbar")
+    require(page.inner_text("#filters-filter-panel .search-input-field label >> nth=0") == "Search" and page.get_attribute("#filter-search", "placeholder") is None, "Search label and no placeholder")
+    page.fill("#filters-filter-panel-date-to", "2026-11-01")
+    page.dispatch_event("#filters-filter-panel-date-to", "change")
+    require(page.is_visible("#filters-filter-panel-date-error") and count(page) == 4, "A backwards date range shows an alert and is not applied")
+    page.fill("#filters-filter-panel-date-to", "")
+    page.dispatch_event("#filters-filter-panel-date-to", "change")
+    require(not page.is_visible("#filters-filter-panel-date-error"), "Clearing the end date clears the alert")
 
     # Calendar uses the same records and dates.
     page.click("#view-tabs [data-view=calendar]")
@@ -187,7 +201,7 @@ def run(base, page, problems):
     require(page.locator("#stats-agencies-table tbody tr").count() == 1, "Agency chart not filtered")
 
     # Clear all, then unfiltered totals.
-    page.click("#reset-filters-button")
+    page.click(RESET)
     require(page.url.endswith("?view=stats"), f"Reset kept filters: {page.url}")
     cards = re.sub(r"\s+", " ", page.inner_text("#stats-kpis"))
     planned = sum(r["status"] == "Planned" for r in expected)
@@ -214,7 +228,7 @@ def run(base, page, problems):
 
     # Toolbar per tab, checkboxes, select all, CSV and RSS.
     page.fill("#filter-search", "")
-    page.wait_for_timeout(350)
+    page.wait_for_timeout(700)
     visible = lambda ids: [i for i in ("copy-list-button", "copy-link-button", "download-data-button", "rss-feed-link",
                                        "copy-stats-button", "download-all-png-button") if page.is_visible("#" + i)]
     require(visible(None) == ["copy-list-button", "copy-link-button", "download-data-button", "rss-feed-link"],
@@ -305,12 +319,12 @@ def run(base, page, problems):
     page.fill("#filter-search", "civic")
     page.locator("#rss-feed-link").wait_for(state="hidden")  # search is debounced
     page.fill("#filter-search", "")
-    page.fill("#filter-from", "2026-11-13")
-    page.dispatch_event("#filter-from", "change")
+    page.fill("#filters-filter-panel-date-from", "2026-11-13")
+    page.dispatch_event("#filters-filter-panel-date-from", "change")
     require(page.is_hidden("#rss-feed-link"), "RSS is hidden when filtering by date")
-    page.click("#reset-filters-button")
+    page.click(RESET)
     require(page.is_visible("#rss-feed-link"), "RSS returns when no filter applies")
-    page.click("#reset-filters-button")
+    page.click(RESET)
     for view, ids in (("calendar", []),
                       ("stats", ["copy-stats-button", "download-all-png-button", "copy-link-button"])):
         page.click(f"#view-tabs [data-view={view}]")
@@ -511,49 +525,49 @@ def run(base, page, problems):
     page.evaluate("localStorage.removeItem('marinos.filters.marin-reach.filters')")
     page.goto(base + "?status=Planned")
     page.wait_for_selector("#reach-app:not([hidden])")
-    require(page.is_visible("#filter-toggle") and page.inner_text("#filter-toggle").strip() == "", "The Filters button shows an icon and no text")
-    page.wait_for_function("document.getElementById('filter-toggle').getAttribute('aria-label') === 'Filter, 1 active'", timeout=3000)  # the shell names the button from data-filter-active
-    require(page.evaluate("document.querySelector('.search-side').firstElementChild.id") == "filter-toggle", "The button is first in the left column, above the filters")
-    require(page.evaluate("getComputedStyle(document.getElementById('filter-toggle')).backgroundColor") != "rgba(0, 0, 0, 0)", "The button has a solid background")
+    require(page.is_visible("#filters-filter-panel-toggle") and page.inner_text("#filters-filter-panel-toggle").strip() == "", "The Filters button shows an icon and no text")
+    page.wait_for_function("document.getElementById('filters-filter-panel-toggle').getAttribute('aria-label') === 'Filter, 1 active'", timeout=3000)  # the shell names the button from data-filter-active
+    require(page.evaluate("document.querySelector('.search-side').firstElementChild.id") == "filters-filter-panel-toggle", "The button is first in the left column, above the filters")
+    require(page.evaluate("getComputedStyle(document.getElementById('filters-filter-panel-toggle')).backgroundColor") != "rgba(0, 0, 0, 0)", "The button has a solid background")
     look = "el => { const c = getComputedStyle(el); return [c.borderTopWidth, c.borderTopColor, c.borderRadius, c.backgroundColor, c.color]; }"
     edge = "el => { const c = getComputedStyle(el); return [c.borderTopWidth, c.borderTopColor, c.borderRadius]; }"
-    require(page.locator("#filter-toggle").evaluate(edge) == page.locator("#record-list .action-group").first.evaluate(edge),
+    require(page.locator("#filters-filter-panel-toggle").evaluate(edge) == page.locator("#record-list .action-group").first.evaluate(edge),
             "The Filters button has the same border and radius as the card button group")
-    require(page.is_visible("#filter-panel") and page.get_attribute("#filter-toggle", "aria-expanded") == "true", "Filters start open on wide screens")
-    require(page.is_visible("#filter-toggle [data-filter-icon=open]") and not page.is_visible("#filter-toggle [data-filter-icon=closed]"), "Open filters show the panel-right-open icon")
-    require(abs(page.evaluate("document.getElementById('filter-toggle').getBoundingClientRect().right - document.getElementById('filter-panel').getBoundingClientRect().right")) < 1,
+    require(page.is_visible("#filters-filter-panel") and page.get_attribute("#filters-filter-panel-toggle", "aria-expanded") == "true", "Filters start open on wide screens")
+    require(page.is_visible("#filters-filter-panel-toggle [data-filter-icon=open]") and not page.is_visible("#filters-filter-panel-toggle [data-filter-icon=closed]"), "Open filters show the panel-right-open icon")
+    require(abs(page.evaluate("document.getElementById('filters-filter-panel-toggle').getBoundingClientRect().right - document.getElementById('filters-filter-panel').getBoundingClientRect().right")) < 1,
             "Open, the button sits at the right edge of the filters column")
     shown, width_open = count(page), page.evaluate("document.querySelector('.search-results').offsetWidth")
-    page.focus("#filter-toggle")
+    page.focus("#filters-filter-panel-toggle")
     page.keyboard.press("Enter")
-    require(not page.is_visible("#filter-panel") and page.get_attribute("#filter-toggle", "aria-expanded") == "false", "Enter hides the filters")
-    require(page.is_visible("#filter-toggle") and page.evaluate("document.activeElement.id") == "filter-toggle", "The button stays and keeps focus")
-    require(page.is_visible("#filter-toggle [data-filter-icon=closed]") and not page.is_visible("#filter-toggle [data-filter-icon=open]"), "Hidden filters show the panel-left-open icon")
-    require(page.evaluate("document.getElementById('filter-toggle').getBoundingClientRect().left") < 40, "Hidden, the button sits at the left edge")
+    require(not page.is_visible("#filters-filter-panel") and page.get_attribute("#filters-filter-panel-toggle", "aria-expanded") == "false", "Enter hides the filters")
+    require(page.is_visible("#filters-filter-panel-toggle") and page.evaluate("document.activeElement.id") == "filters-filter-panel-toggle", "The button stays and keeps focus")
+    require(page.is_visible("#filters-filter-panel-toggle [data-filter-icon=closed]") and not page.is_visible("#filters-filter-panel-toggle [data-filter-icon=open]"), "Hidden filters show the panel-left-open icon")
+    require(page.evaluate("document.getElementById('filters-filter-panel-toggle').getBoundingClientRect().left") < 40, "Hidden, the button sits at the left edge")
     require(count(page) == shown and "Status: Planned" in summary(page), "Hiding the filters does not change what is filtered")
     require(page.evaluate("document.querySelector('.search-results').offsetWidth") > width_open, "The results use the freed width")
     page.reload()
     page.wait_for_selector("#reach-app:not([hidden])")
-    require(not page.is_visible("#filter-panel"), "The collapsed choice is remembered")
+    require(not page.is_visible("#filters-filter-panel"), "The collapsed choice is remembered")
     page.goto(base + "?view=map")
     page.wait_for_selector("#panel-map:not([hidden]) .leaflet-marker-icon")
     map_closed = page.evaluate("document.getElementById('map').offsetWidth")
-    page.click("#filter-toggle")
+    page.click("#filters-filter-panel-toggle")
     page.wait_for_timeout(300)
     require(page.evaluate("document.getElementById('map').offsetWidth") < map_closed, "The map measures itself again when the panel returns")
     page.reload()
     page.wait_for_selector("#reach-app:not([hidden])")
-    require(page.is_visible("#filter-panel"), "The open choice is remembered")
+    require(page.is_visible("#filters-filter-panel"), "The open choice is remembered")
     page.set_viewport_size({"width": 360, "height": 740})
     page.wait_for_timeout(200)
-    require(page.is_visible("#filter-toggle") and not page.is_visible("#filter-panel"), "Narrow screens keep the button and start closed")
-    require(page.evaluate("(() => { const t = document.getElementById('filter-toggle').getBoundingClientRect(); const r = document.getElementById('view-tab-row').getBoundingClientRect(); return t.right <= r.left + 1 && Math.abs(t.top - r.top) < 12; })()"), "On narrow screens the button sits beside the tab row, not on a row of its own")
-    page.click("#filter-toggle")
-    require(page.is_visible("#filter-panel") and page.evaluate("document.getElementById('filter-toggle').getBoundingClientRect().bottom <= document.getElementById('filter-panel').getBoundingClientRect().top"),
+    require(page.is_visible("#filters-filter-panel-toggle") and not page.is_visible("#filters-filter-panel"), "Narrow screens keep the button and start closed")
+    require(page.evaluate("(() => { const t = document.getElementById('filters-filter-panel-toggle').getBoundingClientRect(); const r = document.getElementById('view-tab-row').getBoundingClientRect(); return t.right <= r.left + 1 && Math.abs(t.top - r.top) < 12; })()"), "On narrow screens the button sits beside the tab row, not on a row of its own")
+    page.click("#filters-filter-panel-toggle")
+    require(page.is_visible("#filters-filter-panel") and page.evaluate("document.getElementById('filters-filter-panel-toggle').getBoundingClientRect().bottom <= document.getElementById('filters-filter-panel').getBoundingClientRect().top"),
             "The narrow button opens the filters below itself")
     page.set_viewport_size({"width": 1280, "height": 900})
     page.wait_for_timeout(200)
-    require(page.is_visible("#filter-panel"), "Wide screens go back to the remembered choice")
+    require(page.is_visible("#filters-filter-panel"), "Wide screens go back to the remembered choice")
     page.evaluate("localStorage.removeItem('marinos.filters.marin-reach.filters')")
     page.goto(base)
     page.wait_for_selector("#reach-app:not([hidden])")
@@ -565,12 +579,12 @@ def run(base, page, problems):
             "Deep link did not restore state")
     page.goto(base)
     page.wait_for_selector("#reach-app:not([hidden])")
-    page.focus("#filter-toggle")
+    page.focus("#filters-filter-panel-toggle")
     seen = set()
     for _ in range(40):
         page.keyboard.press("Tab")
         seen.add(page.evaluate("document.activeElement.id || document.activeElement.name || ''"))
-    require({"filter-from", "filter-to"} <= seen, "Filters not keyboard reachable")
+    require({"filters-filter-panel-date-from", "filters-filter-panel-date-to"} <= seen, "Filters not keyboard reachable")
 
     # Responsive: sidebar becomes a toggle; calendar becomes an agenda.
     for width in (390, 320):
@@ -582,9 +596,9 @@ def run(base, page, problems):
         page.goto(base + "?view=calendar")
         page.wait_for_selector("#reach-app:not([hidden])")
         require(not page.is_visible("#cal-grid") and page.is_visible("#cal-agenda"), "Agenda fallback missing")
-        require(not page.is_visible("#filter-panel"), "Filters should start collapsed on small screens")
-        page.click("#filter-toggle")
-        require(page.is_visible("#filter-panel") and page.get_attribute("#filter-toggle", "aria-expanded") == "true",
+        require(not page.is_visible("#filters-filter-panel"), "Filters should start collapsed on small screens")
+        page.click("#filters-filter-panel-toggle")
+        require(page.is_visible("#filters-filter-panel") and page.get_attribute("#filters-filter-panel-toggle", "aria-expanded") == "true",
                 "Filter drawer did not open")
         no_overflow(page, f"{width}px")
     page.set_viewport_size({"width": 1280, "height": 900})
