@@ -1,0 +1,88 @@
+{
+  "$schema": "vendor/marinos/filter-panel.schema.json",
+  "schemaVersion": "1.0.0",
+  "search": {
+    "id": "filter-search"
+  },
+  "groups": [
+    {
+      "type": "date-range",
+      "id": "date",
+      "label": "Dates",
+      "fromParam": "from",
+      "toParam": "to"
+    },
+    {
+      "type": "checkbox",
+      "id": "audience",
+      "label": "Audiences",
+      "allLabel": "All audiences",
+      "options": {
+        "app": true
+      }
+    },
+    {
+      "type": "checkbox",
+      "id": "type",
+      "label": "Types",
+      "allLabel": "All types",
+      "options": {
+        "app": true
+      }
+    },
+    {
+      "type": "checkbox",
+      "id": "project",
+      "label": "Projects",
+      "allLabel": "All projects",
+      "options": {
+        "app": true
+      }
+    },
+    {
+      "type": "checkbox",
+      "id": "agency",
+      "label": "Agencies",
+      "allLabel": "All agencies",
+      "options": {
+        "app": true
+      }
+    },
+    {
+      "type": "checkbox",
+      "id": "partner",
+      "label": "Partners",
+      "allLabel": "All partners",
+      "options": {
+        "app": true
+      }
+    },
+    {
+      "type": "checkbox",
+      "id": "status",
+      "label": "Statuses",
+      "allLabel": "All statuses",
+      "options": {
+        "app": true
+      }
+    },
+    {
+      "type": "checkbox",
+      "id": "area",
+      "label": "Places",
+      "allLabel": "All places",
+      "options": {
+        "app": true
+      }
+    },
+    {
+      "type": "checkbox",
+      "id": "owner",
+      "label": "Owners",
+      "allLabel": "All owners",
+      "options": {
+        "app": true
+      }
+    }
+  ]
+}

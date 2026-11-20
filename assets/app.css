@@ -10,18 +10,8 @@
   followed by a reviewed shell release, not an edit to vendor/marinos/.
 */
 
-/* The filter layout (.search-layout, .search-side, .search-sidebar, .search-results), the Filters button
-   (.filter-toggle), the search field (.search-input-field) and the filter groups (.search-facet-group,
-   .search-facet-list, .search-facet-count, .mm-facet-group) come from Marin UI through the shell. Only the
-   date fields and the card checkboxes are the app's own. */
-.search-input-field input[type="date"] {
-  width: 100%;
-}
-
-#date-range .search-input-field {
-  margin-bottom: 0.75rem;
-}
-
+/* The filter column (layout, Filters button, search, date range and filter groups) is drawn by the shell from
+   filters.json. Only the card checkboxes are the app's own. */
 /* Checkboxes are 24 px square (WCAG 2.5.8 target size), larger than Pico's default of about 18 px. */
 .mm-card__select input[type="checkbox"],
 .mm-select-all input[type="checkbox"] {

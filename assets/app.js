@@ -17,7 +17,8 @@
     filtered: [],
     anchor: '',
     shown: PAGE_SIZE,
-    facetInputs: new Map(),
+    // The filter column, drawn by the shell from filters.json.
+    column: null,
     selected: new Set(),
     charts: {},
     lastFocus: null,
@@ -61,74 +62,44 @@
   // --- URL state ---
 
   function writeUrl() {
-    const query = S.serializeState(app.state);
-    const url = window.location.pathname + (query ? '?' + query : '') + window.location.hash;
-    window.history.replaceState(null, '', url);
-  }
-
-  function sanitizeState() {
-    const st = app.state;
-    S.FACETS.forEach((f) => {
-      const valid = new Set(S.facetOptions(app.records, S.emptyState(), f.key, app.known).map((o) => o.value));
-      st.facets[f.key] = st.facets[f.key].filter((v, i, arr) => valid.has(v) && arr.indexOf(v) === i);
-    });
-    if (st.from && st.to && st.from > st.to) {
-      const swap = st.from;
-      st.from = st.to;
-      st.to = swap;
-    }
+    // The search, dates and facets belong to the filter column, which keeps them in the address itself. The app
+    // writes the view, range, sort and map place, and leaves every other parameter as it found it. A link from
+    // another site (?engagement=<id>) is used once and dropped.
+    const params = new URLSearchParams(window.location.search);
+    ['view', 'range', 'sort', 'place', 'engagement'].forEach((key) => params.delete(key));
+    new URLSearchParams(S.serializeState(Object.assign(S.emptyState(), {
+      view: app.state.view, range: app.state.range, sort: app.state.sort, place: app.state.place,
+    }))).forEach((value, key) => params.set(key, value));
+    const query = params.toString();
+    window.history.replaceState(null, '', window.location.pathname + (query ? '?' + query : '') + window.location.hash);
   }
 
   // --- filters ---
 
-  function buildFacets() {
-    const host = $('facet-groups');
-    host.textContent = '';
-    app.facetInputs.clear();
+  // The column offers each filter's choices from the data (the dataset's own project list included), and shows
+  // each choice's count, which leaves out that filter's own selection so its other choices stay visible.
+  function offerOptions() {
     S.FACETS.forEach((facet) => {
-      const options = S.facetOptions(app.records, S.emptyState(), facet.key, app.known);
-      if (!options.length) return;
-      const list = h('ul', { class: 'search-facet-list' });
-      options.forEach((opt, i) => {
-        const id = 'facet-' + facet.key + '-' + i;
-        const input = h('input', { type: 'checkbox', id: id, name: facet.param, value: opt.value });
-        const count = h('span', { class: 'search-facet-count' });
-        app.facetInputs.set(facet.key + '\u0000' + opt.value, { input: input, count: count });
-        list.append(h('li', {}, h('label', { for: id }, [input, h('span', { text: opt.value }), count])));
-      });
-      // One collapsed dropdown per filter, like the monitor groups in marin-mentions.
-      const count = h('span', { class: 'app-help-text', 'data-facet-count': facet.key });
-      const details = h('details', { class: 'mm-facet-group', 'data-facet': facet.key }, [
-        h('summary', {}, [facet.label + ' ', count]),
-        h('fieldset', { class: 'search-facet-group' }, [h('legend', { class: 'visually-hidden', text: facet.label }), list]),
-      ]);
-      if (app.state.facets[facet.key].length) details.open = true;
-      host.append(details);
+      app.column.setOptions(facet.key, S.facetOptions(app.records, S.emptyState(), facet.key, app.known).map((opt) => ({ value: opt.value, label: opt.value, count: opt.count })));
     });
+    readColumn();
+  }
+
+  function readColumn() {
+    const held = app.column.filterState;
+    const st = app.state;
+    st.q = held.search.trim();
+    st.from = held.groups.date.from;
+    st.to = held.groups.date.to;
+    S.FACETS.forEach((facet) => { st.facets[facet.key] = held.groups[facet.key]; });
   }
 
   function syncControls() {
-    const st = app.state;
-    $('filter-search').value = st.q;
-    $('filter-from').value = st.from;
-    $('filter-to').value = st.to;
-    $('filter-from').max = st.to || '';
-    $('filter-to').min = st.from || '';
     S.FACETS.forEach((facet) => {
-      S.facetOptions(app.records, st, facet.key, app.known).forEach((opt) => {
-        const entry = app.facetInputs.get(facet.key + '\u0000' + opt.value);
-        if (!entry) return;
-        entry.input.checked = st.facets[facet.key].indexOf(opt.value) >= 0;
-        entry.count.textContent = '(' + opt.count + ')';
-      });
+      const counts = {};
+      S.facetOptions(app.records, app.state, facet.key, app.known).forEach((opt) => { counts[opt.value] = opt.count; });
+      app.column.setCounts(facet.key, counts);
     });
-    S.FACETS.forEach((facet) => {
-      const badge = document.querySelector('[data-facet-count="' + facet.key + '"]');
-      if (badge) badge.textContent = st.facets[facet.key].length ? '(' + st.facets[facet.key].length + ' selected)' : '';
-    });
-    const n = S.activeFilterCount(st);
-    // The button is icon-only: the shell turns this count into its name ("Filter, N active").
-    $('filter-toggle').dataset.filterActive = String(n);
   }
 
   // --- filters panel ---
@@ -980,46 +951,11 @@
     if (focusTab) $('tab-' + view).focus();
   }
 
-  function resetFilters() {
-    const view = app.state.view;
-    const range = app.state.range;
-    const sort = app.state.sort;
-    app.state = S.emptyState();
-    app.state.view = view;
-    app.state.range = range;
-    app.state.sort = sort;
-    update(true);
-    say('Filters reset.');
-  }
-
   function bindEvents() {
-    let timer = 0;
-    $('filter-search').addEventListener('input', (e) => {
-      window.clearTimeout(timer);
-      timer = window.setTimeout(() => { app.state.q = e.target.value.trim(); update(false); }, 200);
-    });
+    app.column = document.querySelector('[data-filter-column]');
     $('filters').addEventListener('submit', (e) => e.preventDefault());
-    ['from', 'to'].forEach((key) => {
-      $('filter-' + key).addEventListener('change', (e) => {
-        app.state[key] = e.target.value;
-        if (app.state.from && app.state.to && app.state.from > app.state.to) {
-          const swap = app.state.from;
-          app.state.from = app.state.to;
-          app.state.to = swap;
-          say('The From and To dates were swapped so the range runs forward.');
-        }
-        update(false);
-      });
-    });
-    $('facet-groups').addEventListener('change', (e) => {
-      const input = e.target;
-      if (input.type !== 'checkbox') return;
-      const facet = S.FACETS.filter((f) => f.param === input.name)[0];
-      const current = app.state.facets[facet.key];
-      app.state.facets[facet.key] = input.checked ? current.concat(input.value) : current.filter((v) => v !== input.value);
-      update(false);
-    });
-    $('reset-filters-button').addEventListener('click', resetFilters);
+    // Every change in the filter column (search, dates, choices, Reset) lands here.
+    app.column.addEventListener('marin-filter-change', () => { readColumn(); update(false); });
     $('map-go-list').addEventListener('click', () => setView('list', true));
     bindMapSelection();
 
@@ -1143,8 +1079,12 @@
     app.records = data.records;
     app.known = { project: Array.isArray(data.projects) ? data.projects : [] };
     app.state = S.parseQuery(window.location.search);
-    sanitizeState();
-    buildFacets();
+    // The column is drawn once its own file has loaded, which can be before or after the records arrive.
+    await new Promise((resolve) => {
+      if (app.column.setOptions) resolve();
+      else app.column.addEventListener('marin-filter-ready', resolve, { once: true });
+    });
+    offerOptions();
     app.filtered = S.applyFilters(app.records, app.state);
     app.anchor = S.initialMonth(app.filtered, todayISO()) + '-01';
     if (app.state.range !== 'month' && S.monthKey(app.anchor) === S.monthKey(todayISO())) app.anchor = todayISO();
