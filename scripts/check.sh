@@ -28,10 +28,12 @@ python3 "$ROOT_DIR/tests/test_security_meta.py"
 python3 "$ROOT_DIR/vendor/marinos/audit-buttons.py" "$ROOT_DIR" --fail
 # Lists copy, download, file reading and upload code the app does itself; it must list nothing.
 python3 "$ROOT_DIR/vendor/marinos/audit-shared-helpers.py" "$ROOT_DIR" --fail
-python3 "$ROOT_DIR/scripts/sync-orgs.py" --check
-python3 "$ROOT_DIR/scripts/sync-places.py" --check
-python3 "$ROOT_DIR/scripts/sync-facilities.py" --check
-python3 "$ROOT_DIR/scripts/sync-projects.py" --check
+# Every file marin-data gives this app is a copy. Skipped when marin-data is not next to this repo.
+if [[ -f "$ROOT_DIR/../marin-data/scripts/sync_copies.py" ]]; then
+  python3 "$ROOT_DIR/../marin-data/scripts/sync_copies.py" "$ROOT_DIR" --check
+else
+  printf 'SKIP: marin-data is not next to this repo; its copies were not checked.\n' >&2
+fi
 python3 "$ROOT_DIR/scripts/build_data.py" --check
 python3 "$ROOT_DIR/tests/test_build_data.py"
 
