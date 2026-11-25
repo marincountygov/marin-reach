@@ -30,6 +30,8 @@ python3 "$ROOT_DIR/vendor/marinos/audit-buttons.py" "$ROOT_DIR" --fail
 python3 "$ROOT_DIR/vendor/marinos/audit-shared-helpers.py" "$ROOT_DIR" --fail
 # The filter column must come from filters.json and the shell, with no hand-written markup.
 python3 "$ROOT_DIR/vendor/marinos/audit-filter-column.py" "$ROOT_DIR" --fail
+# An h1 has one of two sizes (Marin UI 1.41.0); this lists app CSS that sets its own size and must list nothing.
+python3 "$ROOT_DIR/vendor/marinos/audit-h1.py" "$ROOT_DIR" --fail
 # Every file marin-data gives this app is a copy. Skipped when marin-data is not next to this repo.
 if [[ -f "$ROOT_DIR/../marin-data/scripts/sync_copies.py" ]]; then
   python3 "$ROOT_DIR/../marin-data/scripts/sync_copies.py" "$ROOT_DIR" --check
